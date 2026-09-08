@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="800"
+        x:Class="Rorrim.Client.MainWindow"
+        Title="Rorrim Remote"
+        Width="1280" Height="800">
+    <DockPanel>
+        <Border DockPanel.Dock="Top" Padding="8" Background="#FF222222">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="Broker:" VerticalAlignment="Center" />
+                <TextBox x:Name="BrokerBox" Width="280" Text="http://localhost:50053" VerticalAlignment="Center" />
+                <TextBlock Text="Display:" VerticalAlignment="Center" />
+                <ComboBox x:Name="DisplayBox" Width="90" VerticalAlignment="Center" SelectedIndex="0">
+                    <ComboBoxItem Content="0" />
+                    <ComboBoxItem Content="1" />
+                    <ComboBoxItem Content="2" />
+                </ComboBox>
+                <Button x:Name="ConnectButton" Content="Connect" Click="OnConnectClick" VerticalAlignment="Center" />
+                <Button x:Name="DisconnectButton" Content="Disconnect" Click="OnDisconnectClick" VerticalAlignment="Center" IsEnabled="False" />
+                <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="#FFFFAA00" />
+            </StackPanel>
+        </Border>
+
+        <Border Padding="8" Background="#FF111111">
+            <Panel>
+                <Image x:Name="Viewer" Stretch="Uniform" />
+                <TextBlock x:Name="IdleText" Text="Connect to a broker and select a display to begin."
+                           Foreground="#FF666666" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Panel>
+        </Border>
+    </DockPanel>
+</Window>

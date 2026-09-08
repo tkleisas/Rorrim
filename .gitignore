@@ -1,0 +1,31 @@
+## Build outputs
+bin/
+obj/
+*.user
+
+## Rider/VS
+.vs/
+.idea/
+*.suo
+
+## Test results
+TestResults/
+*.trx
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Diagnostic / runtime artifacts
+*.log
+snapshot_*.jpg
+snapshot_*.ppm
+capture.log
+client-window*.png
+
+## Certificates / secrets
+*.pfx
+*.pem
+certs/
+clients/
+*.key

@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package rorrim;
+
+option csharp_namespace = "Rorrim.Shared.Contracts";
+
+// ---------- Shared types ----------
+
+// Metadata describing a host display (physical monitor).
+message DisplayInfo {
+  string display_id = 1;   // stable id, e.g. "\\.\DISPLAY1" or device path
+  string name = 2;         // friendly name
+  uint32 width = 3;
+  uint32 height = 4;
+  uint32 refresh_rate = 5; // Hz
+  int32 x = 6;             // absolute position on desktop
+  int32 y = 7;
+  bool is_primary = 8;
+}
+
+message DisplayListReply {
+  repeated DisplayInfo displays = 1;
+}
+
+// A single encoded video frame (H.264 annex-b NAL byte stream).
+message Frame {
+  bytes data = 1;
+  bool is_keyframe = 2;
+  uint64 timestamp_us = 3;
+  uint32 width = 4;
+  uint32 height = 5;
+}
+
+// ---------- Remote client <-> Broker ----------
+
+service RorrimClient {
+  // Bidirectional session. Client up: hello, input. Broker down: display list, frames, status.
+  rpc StreamDesktop(stream ClientToServer) returns (stream ServerToClient);
+}
+
+message ClientToServer {
+  oneof payload {
+    Hello hello = 1;         // first message: selects display + optional grid
+    PointerInput input = 2;  // mouse/keyboard
+    SetGrid grid = 3;        // request multiple displays in a grid
+    bool disconnect = 4;
+  }
+}
+
+message ServerToClient {
+  oneof payload {
+    DisplayListReply displays = 1;
+    Frame frame = 2;          // streamed video frame, ordered by timestamp_us
+    SessionStatus status = 3; // lock/auth/error notifications
+  }
+}
+
+message Hello {
+  string display_id = 1;   // display to stream, or empty for primary
+}
+
+message SetGrid {
+  repeated string display_ids = 1;
+}
+
+message SessionStatus {
+  StatusKind kind = 1;
+  string message = 2;
+  enum StatusKind {
+    UNKNOWN = 0;
+    LOCKED = 1;      // desktop locked/secure screen
+    AUTH_FAILED = 2;
+    DISPLAY_LOST = 3; // monitor disconnected
+    DISCONNECTED = 4;
+  }
+}
+
+// ---------- Input ----------
+
+message PointerInput {
+  oneof action {
+    MouseMove move = 1;
+    MouseButton button = 2;
+    KeyEvent key = 3;
+    Scroll scroll = 4;
+  }
+}
+
+message MouseMove {
+  double x = 1; // normalized 0..1
+  double y = 2;
+}
+
+message MouseButton {
+  bool down = 1;
+  uint32 button = 2; // 0=L,1=R,2=M
+  double x = 3;      // normalized 0..1
+  double y = 4;
+}
+
+message Scroll {
+  double delta = 1;
+}
+
+message KeyEvent {
+  uint32 virtual_key = 1;
+  uint32 scan_code = 2;
+  bool down = 3;
+  bool extended = 4;
+}
+
+// ---------- Agent <-> Broker (internal, loopback) ----------
+
+service RorrimAgent {
+  // Agent registers and pumps frames up; broker pushes input + control down.
+  rpc Attach(stream AgentToServer) returns (stream ServerToAgent);
+}
+
+message AgentToServer {
+  oneof payload {
+    AgentHello hello = 1;   // register: claims a display
+    Frame frame = 2;        // captured frame
+    Heartbeat heartbeat = 3;
+  }
+}
+
+message ServerToAgent {
+  oneof payload {
+    AgentCommand command = 1; // start/stop capture
+    PointerInput input = 2;   // inject input
+  }
+}
+
+message AgentHello {
+  string display_id = 1;
+  bool acquire_capture = 2; // take the duplication desktop from this process
+}
+
+message AgentCommand {
+  CommandKind kind = 1;
+  enum CommandKind {
+    UNKNOWN = 0;
+    START = 1;
+    STOP = 2;
+  }
+}
+
+message Heartbeat {
+  uint64 monotonic_us = 1;
+  bool desktop_locked = 2;
+}
