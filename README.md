@@ -102,4 +102,4 @@ broker, streams the desktop, and injects input.
 
 ## License
 
-TBD
+[MIT](LICENSE)
