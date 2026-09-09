@@ -1,0 +1,24 @@
+<Project>
+
+  <!--
+    Stamps the assembly InformationalVersion from the current git state, so the version shown in
+    the client's window title is derived from git tags (the project's version source of truth):
+      exact tag checkout   -> v0.0.1
+      commits after a tag  -> v0.0.1-3-g07097c5
+      uncommitted changes  -> v0.0.1-dirty
+      no tags / no git     -> 0.0.0-untagged
+  -->
+  <Target Name="StampGitVersion" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git describe --tags --dirty --always" ConsoleToMSBuild="true" IgnoreExitCode="true" Timeout="10000">
+      <Output TaskParameter="ConsoleOutput" PropertyName="GitDescribeOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="GitDescribeExitCode" />
+    </Exec>
+    <PropertyGroup Condition="'$(GitDescribeExitCode)' == '0' AND '$(GitDescribeOutput.Trim())' != ''">
+      <InformationalVersion>$(GitDescribeOutput.Trim())</InformationalVersion>
+    </PropertyGroup>
+    <PropertyGroup Condition="!('$(GitDescribeExitCode)' == '0' AND '$(GitDescribeOutput.Trim())' != '')">
+      <InformationalVersion>0.0.0-untagged</InformationalVersion>
+    </PropertyGroup>
+  </Target>
+
+</Project>

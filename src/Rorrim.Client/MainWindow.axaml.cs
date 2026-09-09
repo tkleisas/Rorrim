@@ -1,3 +1,4 @@
+using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -28,6 +29,8 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        // The stamped version already carries the tag's "v" prefix (e.g. "v0.0.1-dirty").
+        Title = $"Rorrim Remote {GetVersion()}";
         Viewer.PointerMoved += OnViewerPointerMoved;
         Viewer.PointerPressed += OnViewerPointerButton;
         Viewer.PointerReleased += OnViewerPointerButton;
@@ -122,6 +125,14 @@ public sealed partial class MainWindow : Window
             StatusText.Text = "Connect failed: " + ex.Message;
             OnDisconnected(CancellationToken.None);
         }
+    }
+
+    /// <summary>Version from the git tag stamped at build time (see Directory.Build.targets).</summary>
+    private static string GetVersion()
+    {
+        string? v = typeof(MainWindow).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        return string.IsNullOrWhiteSpace(v) ? "dev" : v;
     }
 
     private string GetSelectedDisplayId()
