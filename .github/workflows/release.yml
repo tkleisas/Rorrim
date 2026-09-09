@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: git describe version stamping
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build Rorrim.slnx -c Release --nologo
+
+      - name: Test
+        run: dotnet test Rorrim.slnx -c Release --no-build --nologo
+
+      # Self-contained publishes: users don't need a .NET install. The client ships for every
+      # platform; the OpenH264 native limits H.264 to win/linux — macOS clients negotiate JPEG.
+      - name: Publish Windows services (Server, Agent)
+        run: |
+          dotnet publish src/Rorrim.Server -c Release -r win-x64 --self-contained true -o dist-stage/rorrim-server-win-x64 --nologo
+          dotnet publish src/Rorrim.Agent  -c Release -r win-x64 --self-contained true -o dist-stage/rorrim-agent-win-x64  --nologo
+
+      - name: Publish Client (win-x64, linux-x64, osx-x64, osx-arm64)
+        run: |
+          dotnet publish src/Rorrim.Client -c Release -r win-x64   --self-contained true -o dist-stage/rorrim-client-win-x64   --nologo
+          dotnet publish src/Rorrim.Client -c Release -r linux-x64 --self-contained true -o dist-stage/rorrim-client-linux-x64 --nologo
+          dotnet publish src/Rorrim.Client -c Release -r osx-x64   --self-contained true -o dist-stage/rorrim-client-osx-x64   --nologo
+          dotnet publish src/Rorrim.Client -c Release -r osx-arm64 --self-contained true -o dist-stage/rorrim-client-osx-arm64 --nologo
+
+      - name: Publish Probe (win-x64)
+        run: dotnet publish tools/Rorrim.Probe -c Release -r win-x64 --self-contained true -o dist-stage/rorrim-probe-win-x64 --nologo
+
+      - name: Pack
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $out = "dist/$tag"
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Get-ChildItem dist-stage -Directory | ForEach-Object {
+            Compress-Archive -Path "$($_.FullName)/*" -DestinationPath "$out/$($_.Name)-$tag.zip"
+            Write-Host "packed $($_.Name)"
+          }
+          Get-ChildItem $out | Select-Object Name, Length
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-packages
+          path: dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**/*.zip
+          generate_release_notes: true

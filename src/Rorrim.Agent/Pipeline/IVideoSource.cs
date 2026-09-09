@@ -18,7 +18,8 @@ public readonly record struct EncodedFrame(
     long TimestampUs,
     int Width,
     int Height,
-    byte[] CodecConfig);
+    byte[] CodecConfig,
+    Shared.Contracts.Codec Codec = Shared.Contracts.Codec.Jpeg);
 
 /// <summary>
 /// Events that can interrupt/suspend the capture stream.

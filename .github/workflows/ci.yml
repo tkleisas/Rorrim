@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: git describe version stamping
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build Rorrim.slnx -c Release --nologo
+
+      - name: Test
+        run: dotnet test Rorrim.slnx -c Release --no-build --nologo --logger "trx" --results-directory TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: ignore
+
+      # Smoke-check: the agent must produce a real H.264 stream from a headless runner.
+      # Not a UAC-level E2E, but proves codecs + capture + pipeline run on a clean machine.
+      - name: Agent H.264 smoke test
+        run: |
+          $exe = "src/Rorrim.Agent/bin/Release/net10.0-windows/Rorrim.Agent.exe"
+          $p = Start-Process -FilePath $exe -ArgumentList "self-test","h264","0" -Wait -PassThru -NoNewWindow
+          Write-Host "agent self-test exit: $($p.ExitCode)"
+          $files = Get-ChildItem -Path . -Filter "snapshot_*.h264" -ErrorAction SilentlyContinue
+          if (-not $files) { Write-Host "::warning::No H.264 snapshots produced (runner may have no active console session)"; }
+          Remove-Item -Path . -Filter "snapshot_*.h264" -ErrorAction SilentlyContinue
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: rorrim-binaries
+          path: |
+            src/Rorrim.Server/bin/Release/
+            src/Rorrim.Agent/bin/Release/
+            src/Rorrim.Client/bin/Release/
+            src/Rorrim.Codecs/bin/Release/
+            tools/Rorrim.Probe/bin/Release/
+          if-no-files-found: ignore

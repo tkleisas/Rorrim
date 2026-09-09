@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Rorrim.Shared\Rorrim.Shared.csproj" />
+    <ProjectReference Include="..\Rorrim.Codecs\Rorrim.Codecs.csproj" />
   </ItemGroup>
 
 </Project>

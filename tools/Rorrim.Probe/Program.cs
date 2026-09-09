@@ -37,7 +37,7 @@ try
             lastFrameMs = sw.ElapsedMilliseconds;
             lastBytes = frame.Data.Length;
             if (frames <= 3 || frames % 10 == 0)
-                Console.WriteLine($"[{sw.ElapsedMilliseconds,6} ms] frame {frames}: {frame.Width}x{frame.Height}, {frame.Data.Length} B (+{gap} ms)");
+                Console.WriteLine($"[{sw.ElapsedMilliseconds,6} ms] frame {frames}: codec={frame.Codec} {frame.Width}x{frame.Height}, {frame.Data.Length} B (+{gap} ms)");
         }
         else if (msg.Displays is { } displays)
             Console.WriteLine($"[{sw.ElapsedMilliseconds,6} ms] display list: {displays.Displays.Count} display(s)");

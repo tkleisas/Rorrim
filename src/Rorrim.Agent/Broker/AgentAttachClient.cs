@@ -15,6 +15,9 @@ namespace Rorrim.Agent.Broker;
 /// </summary>
 public readonly record struct AgentUp(EncodedFrame? Frame, Heartbeat? Heartbeat, AgentHello? Hello);
 
+/// <summary>A capture-restart request: switch display and/or codec (rebuilds source + encoder).</summary>
+public readonly record struct SwitchRequest(string DisplayId, Codec Codec);
+
 /// <summary>
 /// The Agent's loopback connection to the broker. Opens the RorrimAgent.Attach duplex stream,
 /// announces its session via the x-rorrim-session / x-rorrim-token metadata headers (the token is
@@ -31,16 +34,16 @@ public sealed class AgentAttachClient : IDisposable
     private readonly int _sessionId;
     private readonly string? _token;
     private readonly InputInjector _inputInjector;
-    private readonly Func<DisplayAdapter, IVideoSource> _sourceFactory;
-    private readonly Func<IVideoEncoder> _encoderFactory;
+    private readonly Func<DisplayAdapter, Codec, IVideoSource> _sourceFactory;
+    private readonly Func<DisplayAdapter, Codec, IVideoEncoder> _encoderFactory;
     private readonly StreamControllerOptions _controllerOptions;
 
     public AgentAttachClient(
         string brokerAddress,
         int sessionId,
         string displayId,
-        Func<DisplayAdapter, IVideoSource> sourceFactory,
-        Func<IVideoEncoder>? encoderFactory = null,
+        Func<DisplayAdapter, Codec, IVideoSource> sourceFactory,
+        Func<DisplayAdapter, Codec, IVideoEncoder>? encoderFactory,
         InputInjector? inputInjector = null,
         string? token = null,
         StreamControllerOptions? controllerOptions = null)
@@ -48,14 +51,31 @@ public sealed class AgentAttachClient : IDisposable
         _brokerAddress = brokerAddress;
         _sessionId = sessionId;
         _displayId = displayId;
-        _sourceFactory = sourceFactory ?? throw new ArgumentNullException(nameof(sourceFactory));
-        _encoderFactory = encoderFactory ?? (() => new JpegVideoEncoder());
+        _sourceFactory = sourceFactory;
+        _encoderFactory = encoderFactory ?? ((_, codec) => CreateDefaultEncoder(codec));
         _inputInjector = inputInjector ?? new InputInjector(new DisplayRect(0, 0, 1920, 1080));
         _token = token;
         _controllerOptions = controllerOptions ?? new StreamControllerOptions
         {
-            TargetFrameIntervalMs = 33 // cap at ~30 fps for the JPEG path
+            TargetFrameIntervalMs = 33 // cap at ~30 fps
         };
+    }
+
+    /// <summary>Default codec pipeline: H.264 when OpenH264 is available, JPEG otherwise.</summary>
+    internal static IVideoEncoder CreateDefaultEncoder(Codec codec)
+    {
+        if (codec == Codec.H264)
+        {
+            try
+            {
+                return new OpenH264VideoEncoder();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[attach] h264 encoder unavailable ({ex.Message}); falling back to jpeg");
+            }
+        }
+        return new JpegVideoEncoder();
     }
 
     /// <summary>Delay before re-attaching after a pairing ends, so the broker can release the old registration.</summary>
@@ -115,15 +135,16 @@ public sealed class AgentAttachClient : IDisposable
         // heartbeats flow from the heartbeat task below.
 
         // Switch requests arrive on the receive side and are consumed by the producer loop.
-        using var switchRequests = new FrameChannel<string>(capacity: 4);
+        using var switchRequests = new FrameChannel<SwitchRequest>(capacity: 4);
 
         // Bounded channel of uplink messages; backpressure instead of unbounded memory growth.
         using var frameChannel = new FrameChannel<AgentUp>();
 
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
-        // Producer: capture + encode for the current display; rebuilds on switch requests.
-        var producer = Task.Run(() => ProduceLoopAsync(current, switchRequests, frameChannel, cts.Token), cts.Token);
+        // Producer: capture + encode for the current display/codec; rebuilds on switch requests.
+        var producer = Task.Run(() => ProduceLoopAsync(
+            current, Codec.H264, switchRequests, frameChannel, cts.Token), cts.Token);
 
         // Heartbeat writer: keep-alive + desktop lock state (shares the channel; channel serializes).
         var heartbeats = Task.Run(async () =>
@@ -141,7 +162,7 @@ public sealed class AgentAttachClient : IDisposable
         Task sendUp = SendUpAsync(request, frameChannel, cts.Token);
 
         // Read commands/input down from the broker.
-        Task receiveInput = ReceiveInputAsync(response, switchRequests, current.DeviceName, cts.Token);
+        Task receiveInput = ReceiveInputAsync(response, switchRequests, current.DeviceName, Codec.H264, cts.Token);
 
         // Wait for any to finish (disconnect or cancel); then tear down the rest.
         await Task.WhenAny(receiveInput, sendUp, producer, heartbeats);
@@ -151,17 +172,19 @@ public sealed class AgentAttachClient : IDisposable
     }
 
     /// <summary>
-    /// Capture loop for the current display. When a display-switch request arrives, the running
-    /// enumeration is interrupted via a per-iteration cancellation link and the source/encoder are
-    /// rebuilt for the new display. Exits when the token is cancelled for real (or no display).
+    /// Capture loop for the current display/codec. When a switch request arrives (display and/or
+    /// codec change, or a restart), the running enumeration is interrupted via a per-iteration
+    /// cancellation link and the source/encoder are rebuilt. Exits when the token is cancelled.
     /// </summary>
     private async Task ProduceLoopAsync(
         DisplayAdapter initial,
-        FrameChannel<string> switchRequests,
+        Codec initialCodec,
+        FrameChannel<SwitchRequest> switchRequests,
         FrameChannel<AgentUp> outChannel,
         CancellationToken ct)
     {
         string currentId = initial.DeviceName;
+        Codec currentCodec = initialCodec;
         while (!ct.IsCancellationRequested)
         {
             var display = DisplayEnumerator.Resolve(DisplayEnumerator.Enumerate(), currentId);
@@ -179,9 +202,9 @@ public sealed class AgentAttachClient : IDisposable
 
             try
             {
-                using var source = _sourceFactory(display.Value);
+                using var source = _sourceFactory(display.Value, currentCodec);
                 source.Start();
-                using var encoder = _encoderFactory();
+                using var encoder = _encoderFactory(display.Value, currentCodec);
                 using var controller = new StreamController(source, encoder, _controllerOptions);
 
                 // (Re-)announce the hello with a freshly enumerated display list on every rebuild,
@@ -198,10 +221,11 @@ public sealed class AgentAttachClient : IDisposable
                     await outChannel.WriteAsync(new AgentUp(frame, null, null), ct);
                 }
 
-                // Enumeration ended: switch pending -> rebuild for the new display; otherwise done.
-                if (switchRequests.TryRead(out string? requested))
+                // Enumeration ended: switch pending -> rebuild for the new display/codec; else done.
+                if (switchRequests.TryRead(out SwitchRequest requested))
                 {
-                    currentId = requested;
+                    currentId = requested.DisplayId;
+                    currentCodec = requested.Codec;
                     continue;
                 }
                 return;
@@ -212,11 +236,12 @@ public sealed class AgentAttachClient : IDisposable
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[attach] capture error on {currentId}: {ex.Message}");
-                // Capture failed for this display; if a switch is pending, honor it, else stop.
-                if (switchRequests.TryRead(out string? requested))
+                Console.WriteLine($"[attach] capture error on {currentId} ({currentCodec}): {ex.Message}");
+                // Capture failed; if a switch is pending, honor it, else stop.
+                if (switchRequests.TryRead(out SwitchRequest requested))
                 {
-                    currentId = requested;
+                    currentId = requested.DisplayId;
+                    currentCodec = requested.Codec;
                     continue;
                 }
                 return;
@@ -258,7 +283,8 @@ public sealed class AgentAttachClient : IDisposable
                     IsKeyframe = frame.IsKeyFrame,
                     TimestampUs = (ulong)frame.TimestampUs,
                     Width = (uint)frame.Width,
-                    Height = (uint)frame.Height
+                    Height = (uint)frame.Height,
+                    Codec = frame.Codec
                 };
             }
             else if (up.Heartbeat is { } hb)
@@ -275,8 +301,9 @@ public sealed class AgentAttachClient : IDisposable
 
     private async Task ReceiveInputAsync(
         IAsyncStreamReader<ServerToAgent> response,
-        FrameChannel<string> switchRequests,
+        FrameChannel<SwitchRequest> switchRequests,
         string currentDisplayId,
+        Codec currentCodec,
         CancellationToken ct)
     {
         while (await response.MoveNext(ct))
@@ -288,22 +315,25 @@ public sealed class AgentAttachClient : IDisposable
             {
                 _inputInjector.Inject(input);
             }
-            else             if (msg.Command is { } command)
+            else if (msg.Command is { } command && command.Kind == AgentCommand.Types.CommandKind.SwitchDisplay)
             {
-                if (command.Kind == AgentCommand.Types.CommandKind.SwitchDisplay
-                    && !string.IsNullOrWhiteSpace(command.DisplayId))
+                var resolved = DisplayEnumerator.Resolve(
+                    DisplayEnumerator.Enumerate(), command.DisplayId);
+
+                // Determine what actually changes: display, codec, or both. A request that changes
+                // nothing (e.g. the client's initial hello) is not a switch.
+                var targetDisplay = resolved is { } r && !string.IsNullOrWhiteSpace(command.DisplayId)
+                    ? r.DeviceName
+                    : currentDisplayId;
+                var targetCodec = command.Codec != Codec.Unspecified ? command.Codec : currentCodec;
+
+                if (targetDisplay != currentDisplayId || targetCodec != currentCodec)
                 {
-                    var resolved = DisplayEnumerator.Resolve(
-                        DisplayEnumerator.Enumerate(), command.DisplayId);
-                    // Compare resolved device names: an id that resolves to the display already
-                    // being captured (e.g. the client's initial hello) is not a switch.
-                    if (resolved is { } target
-                        && !string.Equals(target.DeviceName, currentDisplayId, StringComparison.OrdinalIgnoreCase))
-                    {
-                        _inputInjector.SetDisplay(new DisplayRect(target.X, target.Y, target.Width, target.Height));
-                        currentDisplayId = target.DeviceName;
-                        await switchRequests.WriteAsync(target.DeviceName, ct);
-                    }
+                    if (resolved is { } r2)
+                        _inputInjector.SetDisplay(new DisplayRect(r2.X, r2.Y, r2.Width, r2.Height));
+                    currentDisplayId = targetDisplay;
+                    currentCodec = targetCodec;
+                    await switchRequests.WriteAsync(new SwitchRequest(targetDisplay, targetCodec), ct);
                 }
             }
         }

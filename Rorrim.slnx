@@ -2,12 +2,14 @@
   <Folder Name="/src/">
     <Project Path="src/Rorrim.Agent/Rorrim.Agent.csproj" />
     <Project Path="src/Rorrim.Client/Rorrim.Client.csproj" />
+    <Project Path="src/Rorrim.Codecs/Rorrim.Codecs.csproj" />
     <Project Path="src/Rorrim.Server/Rorrim.Server.csproj" />
     <Project Path="src/Rorrim.Shared/Rorrim.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Rorrim.Agent.Tests/Rorrim.Agent.Tests.csproj" />
     <Project Path="tests/Rorrim.Client.Tests/Rorrim.Client.Tests.csproj" />
+    <Project Path="tests/Rorrim.Codecs.Tests/Rorrim.Codecs.Tests.csproj" />
     <Project Path="tests/Rorrim.Server.Tests/Rorrim.Server.Tests.csproj" />
   </Folder>
 </Solution>

@@ -29,3 +29,5 @@ client-window*.png
 certs/
 clients/
 *.key
+
+snapshot_*.h264

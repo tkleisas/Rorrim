@@ -28,56 +28,59 @@ namespace Rorrim.Shared.Contracts {
             "eV9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBXdpZHRoGAMgASgNEg4KBmhl",
             "aWdodBgEIAEoDRIUCgxyZWZyZXNoX3JhdGUYBSABKA0SCQoBeBgGIAEoBRIJ",
             "CgF5GAcgASgFEhIKCmlzX3ByaW1hcnkYCCABKAgiOQoQRGlzcGxheUxpc3RS",
-            "ZXBseRIlCghkaXNwbGF5cxgBIAMoCzITLnJvcnJpbS5EaXNwbGF5SW5mbyJf",
+            "ZXBseRIlCghkaXNwbGF5cxgBIAMoCzITLnJvcnJpbS5EaXNwbGF5SW5mbyJ9",
             "CgVGcmFtZRIMCgRkYXRhGAEgASgMEhMKC2lzX2tleWZyYW1lGAIgASgIEhQK",
             "DHRpbWVzdGFtcF91cxgDIAEoBBINCgV3aWR0aBgEIAEoDRIOCgZoZWlnaHQY",
-            "BSABKA0imQEKDkNsaWVudFRvU2VydmVyEh4KBWhlbGxvGAEgASgLMg0ucm9y",
-            "cmltLkhlbGxvSAASJQoFaW5wdXQYAiABKAsyFC5yb3JyaW0uUG9pbnRlcklu",
-            "cHV0SAASHwoEZ3JpZBgDIAEoCzIPLnJvcnJpbS5TZXRHcmlkSAASFAoKZGlz",
-            "Y29ubmVjdBgEIAEoCEgAQgkKB3BheWxvYWQikgEKDlNlcnZlclRvQ2xpZW50",
-            "EiwKCGRpc3BsYXlzGAEgASgLMhgucm9ycmltLkRpc3BsYXlMaXN0UmVwbHlI",
-            "ABIeCgVmcmFtZRgCIAEoCzINLnJvcnJpbS5GcmFtZUgAEicKBnN0YXR1cxgD",
-            "IAEoCzIVLnJvcnJpbS5TZXNzaW9uU3RhdHVzSABCCQoHcGF5bG9hZCIbCgVI",
-            "ZWxsbxISCgpkaXNwbGF5X2lkGAEgASgJIh4KB1NldEdyaWQSEwoLZGlzcGxh",
-            "eV9pZHMYASADKAkirAEKDVNlc3Npb25TdGF0dXMSLgoEa2luZBgBIAEoDjIg",
-            "LnJvcnJpbS5TZXNzaW9uU3RhdHVzLlN0YXR1c0tpbmQSDwoHbWVzc2FnZRgC",
-            "IAEoCSJaCgpTdGF0dXNLaW5kEgsKB1VOS05PV04QABIKCgZMT0NLRUQQARIP",
-            "CgtBVVRIX0ZBSUxFRBACEhAKDERJU1BMQVlfTE9TVBADEhAKDERJU0NPTk5F",
-            "Q1RFRBAEIqUBCgxQb2ludGVySW5wdXQSIQoEbW92ZRgBIAEoCzIRLnJvcnJp",
-            "bS5Nb3VzZU1vdmVIABIlCgZidXR0b24YAiABKAsyEy5yb3JyaW0uTW91c2VC",
-            "dXR0b25IABIfCgNrZXkYAyABKAsyEC5yb3JyaW0uS2V5RXZlbnRIABIgCgZz",
-            "Y3JvbGwYBCABKAsyDi5yb3JyaW0uU2Nyb2xsSABCCAoGYWN0aW9uIiEKCU1v",
-            "dXNlTW92ZRIJCgF4GAEgASgBEgkKAXkYAiABKAEiQQoLTW91c2VCdXR0b24S",
-            "DAoEZG93bhgBIAEoCBIOCgZidXR0b24YAiABKA0SCQoBeBgDIAEoARIJCgF5",
-            "GAQgASgBIhcKBlNjcm9sbBINCgVkZWx0YRgBIAEoASJSCghLZXlFdmVudBIT",
-            "Cgt2aXJ0dWFsX2tleRgBIAEoDRIRCglzY2FuX2NvZGUYAiABKA0SDAoEZG93",
-            "bhgDIAEoCBIQCghleHRlbmRlZBgEIAEoCCKHAQoNQWdlbnRUb1NlcnZlchIj",
-            "CgVoZWxsbxgBIAEoCzISLnJvcnJpbS5BZ2VudEhlbGxvSAASHgoFZnJhbWUY",
-            "AiABKAsyDS5yb3JyaW0uRnJhbWVIABImCgloZWFydGJlYXQYAyABKAsyES5y",
-            "b3JyaW0uSGVhcnRiZWF0SABCCQoHcGF5bG9hZCJqCg1TZXJ2ZXJUb0FnZW50",
-            "EicKB2NvbW1hbmQYASABKAsyFC5yb3JyaW0uQWdlbnRDb21tYW5kSAASJQoF",
-            "aW5wdXQYAiABKAsyFC5yb3JyaW0uUG9pbnRlcklucHV0SABCCQoHcGF5bG9h",
-            "ZCJgCgpBZ2VudEhlbGxvEhIKCmRpc3BsYXlfaWQYASABKAkSFwoPYWNxdWly",
-            "ZV9jYXB0dXJlGAIgASgIEiUKCGRpc3BsYXlzGAMgAygLMhMucm9ycmltLkRp",
-            "c3BsYXlJbmZvIpcBCgxBZ2VudENvbW1hbmQSLgoEa2luZBgBIAEoDjIgLnJv",
-            "cnJpbS5BZ2VudENvbW1hbmQuQ29tbWFuZEtpbmQSEgoKZGlzcGxheV9pZBgC",
-            "IAEoCSJDCgtDb21tYW5kS2luZBILCgdVTktOT1dOEAASCQoFU1RBUlQQARII",
-            "CgRTVE9QEAISEgoOU1dJVENIX0RJU1BMQVkQAyI5CglIZWFydGJlYXQSFAoM",
-            "bW9ub3RvbmljX3VzGAEgASgEEhYKDmRlc2t0b3BfbG9ja2VkGAIgASgIMlMK",
-            "DFJvcnJpbUNsaWVudBJDCg1TdHJlYW1EZXNrdG9wEhYucm9ycmltLkNsaWVu",
-            "dFRvU2VydmVyGhYucm9ycmltLlNlcnZlclRvQ2xpZW50KAEwATJJCgtSb3Jy",
-            "aW1BZ2VudBI6CgZBdHRhY2gSFS5yb3JyaW0uQWdlbnRUb1NlcnZlchoVLnJv",
-            "cnJpbS5TZXJ2ZXJUb0FnZW50KAEwAUIaqgIXUm9ycmltLlNoYXJlZC5Db250",
-            "cmFjdHNiBnByb3RvMw=="));
+            "BSABKA0SHAoFY29kZWMYBiABKA4yDS5yb3JyaW0uQ29kZWMimQEKDkNsaWVu",
+            "dFRvU2VydmVyEh4KBWhlbGxvGAEgASgLMg0ucm9ycmltLkhlbGxvSAASJQoF",
+            "aW5wdXQYAiABKAsyFC5yb3JyaW0uUG9pbnRlcklucHV0SAASHwoEZ3JpZBgD",
+            "IAEoCzIPLnJvcnJpbS5TZXRHcmlkSAASFAoKZGlzY29ubmVjdBgEIAEoCEgA",
+            "QgkKB3BheWxvYWQikgEKDlNlcnZlclRvQ2xpZW50EiwKCGRpc3BsYXlzGAEg",
+            "ASgLMhgucm9ycmltLkRpc3BsYXlMaXN0UmVwbHlIABIeCgVmcmFtZRgCIAEo",
+            "CzINLnJvcnJpbS5GcmFtZUgAEicKBnN0YXR1cxgDIAEoCzIVLnJvcnJpbS5T",
+            "ZXNzaW9uU3RhdHVzSABCCQoHcGF5bG9hZCJDCgVIZWxsbxISCgpkaXNwbGF5",
+            "X2lkGAEgASgJEiYKD3JlcXVlc3RlZF9jb2RlYxgCIAEoDjINLnJvcnJpbS5D",
+            "b2RlYyIeCgdTZXRHcmlkEhMKC2Rpc3BsYXlfaWRzGAEgAygJIqwBCg1TZXNz",
+            "aW9uU3RhdHVzEi4KBGtpbmQYASABKA4yIC5yb3JyaW0uU2Vzc2lvblN0YXR1",
+            "cy5TdGF0dXNLaW5kEg8KB21lc3NhZ2UYAiABKAkiWgoKU3RhdHVzS2luZBIL",
+            "CgdVTktOT1dOEAASCgoGTE9DS0VEEAESDwoLQVVUSF9GQUlMRUQQAhIQCgxE",
+            "SVNQTEFZX0xPU1QQAxIQCgxESVNDT05ORUNURUQQBCKlAQoMUG9pbnRlcklu",
+            "cHV0EiEKBG1vdmUYASABKAsyES5yb3JyaW0uTW91c2VNb3ZlSAASJQoGYnV0",
+            "dG9uGAIgASgLMhMucm9ycmltLk1vdXNlQnV0dG9uSAASHwoDa2V5GAMgASgL",
+            "MhAucm9ycmltLktleUV2ZW50SAASIAoGc2Nyb2xsGAQgASgLMg4ucm9ycmlt",
+            "LlNjcm9sbEgAQggKBmFjdGlvbiIhCglNb3VzZU1vdmUSCQoBeBgBIAEoARIJ",
+            "CgF5GAIgASgBIkEKC01vdXNlQnV0dG9uEgwKBGRvd24YASABKAgSDgoGYnV0",
+            "dG9uGAIgASgNEgkKAXgYAyABKAESCQoBeRgEIAEoASIXCgZTY3JvbGwSDQoF",
+            "ZGVsdGEYASABKAEiUgoIS2V5RXZlbnQSEwoLdmlydHVhbF9rZXkYASABKA0S",
+            "EQoJc2Nhbl9jb2RlGAIgASgNEgwKBGRvd24YAyABKAgSEAoIZXh0ZW5kZWQY",
+            "BCABKAgihwEKDUFnZW50VG9TZXJ2ZXISIwoFaGVsbG8YASABKAsyEi5yb3Jy",
+            "aW0uQWdlbnRIZWxsb0gAEh4KBWZyYW1lGAIgASgLMg0ucm9ycmltLkZyYW1l",
+            "SAASJgoJaGVhcnRiZWF0GAMgASgLMhEucm9ycmltLkhlYXJ0YmVhdEgAQgkK",
+            "B3BheWxvYWQiagoNU2VydmVyVG9BZ2VudBInCgdjb21tYW5kGAEgASgLMhQu",
+            "cm9ycmltLkFnZW50Q29tbWFuZEgAEiUKBWlucHV0GAIgASgLMhQucm9ycmlt",
+            "LlBvaW50ZXJJbnB1dEgAQgkKB3BheWxvYWQiYAoKQWdlbnRIZWxsbxISCgpk",
+            "aXNwbGF5X2lkGAEgASgJEhcKD2FjcXVpcmVfY2FwdHVyZRgCIAEoCBIlCghk",
+            "aXNwbGF5cxgDIAMoCzITLnJvcnJpbS5EaXNwbGF5SW5mbyK1AQoMQWdlbnRD",
+            "b21tYW5kEi4KBGtpbmQYASABKA4yIC5yb3JyaW0uQWdlbnRDb21tYW5kLkNv",
+            "bW1hbmRLaW5kEhIKCmRpc3BsYXlfaWQYAiABKAkSHAoFY29kZWMYAyABKA4y",
+            "DS5yb3JyaW0uQ29kZWMiQwoLQ29tbWFuZEtpbmQSCwoHVU5LTk9XThAAEgkK",
+            "BVNUQVJUEAESCAoEU1RPUBACEhIKDlNXSVRDSF9ESVNQTEFZEAMiOQoJSGVh",
+            "cnRiZWF0EhQKDG1vbm90b25pY191cxgBIAEoBBIWCg5kZXNrdG9wX2xvY2tl",
+            "ZBgCIAEoCCo+CgVDb2RlYxIVChFDT0RFQ19VTlNQRUNJRklFRBAAEg4KCkNP",
+            "REVDX0pQRUcQARIOCgpDT0RFQ19IMjY0EAIyUwoMUm9ycmltQ2xpZW50EkMK",
+            "DVN0cmVhbURlc2t0b3ASFi5yb3JyaW0uQ2xpZW50VG9TZXJ2ZXIaFi5yb3Jy",
+            "aW0uU2VydmVyVG9DbGllbnQoATABMkkKC1JvcnJpbUFnZW50EjoKBkF0dGFj",
+            "aBIVLnJvcnJpbS5BZ2VudFRvU2VydmVyGhUucm9ycmltLlNlcnZlclRvQWdl",
+            "bnQoATABQhqqAhdSb3JyaW0uU2hhcmVkLkNvbnRyYWN0c2IGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
-          new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
+          new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Rorrim.Shared.Contracts.Codec), }, null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.DisplayInfo), global::Rorrim.Shared.Contracts.DisplayInfo.Parser, new[]{ "DisplayId", "Name", "Width", "Height", "RefreshRate", "X", "Y", "IsPrimary" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.DisplayListReply), global::Rorrim.Shared.Contracts.DisplayListReply.Parser, new[]{ "Displays" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Frame), global::Rorrim.Shared.Contracts.Frame.Parser, new[]{ "Data", "IsKeyframe", "TimestampUs", "Width", "Height" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Frame), global::Rorrim.Shared.Contracts.Frame.Parser, new[]{ "Data", "IsKeyframe", "TimestampUs", "Width", "Height", "Codec" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.ClientToServer), global::Rorrim.Shared.Contracts.ClientToServer.Parser, new[]{ "Hello", "Input", "Grid", "Disconnect" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.ServerToClient), global::Rorrim.Shared.Contracts.ServerToClient.Parser, new[]{ "Displays", "Frame", "Status" }, new[]{ "Payload" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Hello), global::Rorrim.Shared.Contracts.Hello.Parser, new[]{ "DisplayId" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Hello), global::Rorrim.Shared.Contracts.Hello.Parser, new[]{ "DisplayId", "RequestedCodec" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.SetGrid), global::Rorrim.Shared.Contracts.SetGrid.Parser, new[]{ "DisplayIds" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.SessionStatus), global::Rorrim.Shared.Contracts.SessionStatus.Parser, new[]{ "Kind", "Message" }, null, new[]{ typeof(global::Rorrim.Shared.Contracts.SessionStatus.Types.StatusKind) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.PointerInput), global::Rorrim.Shared.Contracts.PointerInput.Parser, new[]{ "Move", "Button", "Key", "Scroll" }, new[]{ "Action" }, null, null, null),
@@ -88,13 +91,31 @@ namespace Rorrim.Shared.Contracts {
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentToServer), global::Rorrim.Shared.Contracts.AgentToServer.Parser, new[]{ "Hello", "Frame", "Heartbeat" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.ServerToAgent), global::Rorrim.Shared.Contracts.ServerToAgent.Parser, new[]{ "Command", "Input" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentHello), global::Rorrim.Shared.Contracts.AgentHello.Parser, new[]{ "DisplayId", "AcquireCapture", "Displays" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentCommand), global::Rorrim.Shared.Contracts.AgentCommand.Parser, new[]{ "Kind", "DisplayId" }, null, new[]{ typeof(global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentCommand), global::Rorrim.Shared.Contracts.AgentCommand.Parser, new[]{ "Kind", "DisplayId", "Codec" }, null, new[]{ typeof(global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Heartbeat), global::Rorrim.Shared.Contracts.Heartbeat.Parser, new[]{ "MonotonicUs", "DesktopLocked" }, null, null, null, null)
           }));
     }
     #endregion
 
   }
+  #region Enums
+  /// <summary>
+  /// Video codec used for a frame (and requested by a client).
+  /// </summary>
+  public enum Codec {
+    [pbr::OriginalName("CODEC_UNSPECIFIED")] Unspecified = 0,
+    /// <summary>
+    /// per-frame JPEG (interim codec, always available)
+    /// </summary>
+    [pbr::OriginalName("CODEC_JPEG")] Jpeg = 1,
+    /// <summary>
+    /// H.264 Annex-B NAL stream
+    /// </summary>
+    [pbr::OriginalName("CODEC_H264")] H264 = 2,
+  }
+
+  #endregion
+
   #region Messages
   /// <summary>
   /// Metadata describing a host display (physical monitor).
@@ -756,7 +777,7 @@ namespace Rorrim.Shared.Contracts {
   }
 
   /// <summary>
-  /// A single encoded video frame (H.264 annex-b NAL byte stream).
+  /// A single encoded video frame.
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class Frame : pb::IMessage<Frame>
@@ -798,6 +819,7 @@ namespace Rorrim.Shared.Contracts {
       timestampUs_ = other.timestampUs_;
       width_ = other.width_;
       height_ = other.height_;
+      codec_ = other.codec_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -867,6 +889,18 @@ namespace Rorrim.Shared.Contracts {
       }
     }
 
+    /// <summary>Field number for the "codec" field.</summary>
+    public const int CodecFieldNumber = 6;
+    private global::Rorrim.Shared.Contracts.Codec codec_ = global::Rorrim.Shared.Contracts.Codec.Unspecified;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Rorrim.Shared.Contracts.Codec Codec {
+      get { return codec_; }
+      set {
+        codec_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -887,6 +921,7 @@ namespace Rorrim.Shared.Contracts {
       if (TimestampUs != other.TimestampUs) return false;
       if (Width != other.Width) return false;
       if (Height != other.Height) return false;
+      if (Codec != other.Codec) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -899,6 +934,7 @@ namespace Rorrim.Shared.Contracts {
       if (TimestampUs != 0UL) hash ^= TimestampUs.GetHashCode();
       if (Width != 0) hash ^= Width.GetHashCode();
       if (Height != 0) hash ^= Height.GetHashCode();
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) hash ^= Codec.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -937,6 +973,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(40);
         output.WriteUInt32(Height);
       }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(48);
+        output.WriteEnum((int) Codec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -967,6 +1007,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(40);
         output.WriteUInt32(Height);
       }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(48);
+        output.WriteEnum((int) Codec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -991,6 +1035,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (Height != 0) {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(Height);
+      }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Codec);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -1018,6 +1065,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (other.Height != 0) {
         Height = other.Height;
+      }
+      if (other.Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        Codec = other.Codec;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -1058,6 +1108,10 @@ namespace Rorrim.Shared.Contracts {
             Height = input.ReadUInt32();
             break;
           }
+          case 48: {
+            Codec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
+            break;
+          }
         }
       }
     #endif
@@ -1095,6 +1149,10 @@ namespace Rorrim.Shared.Contracts {
           }
           case 40: {
             Height = input.ReadUInt32();
+            break;
+          }
+          case 48: {
+            Codec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
             break;
           }
         }
@@ -1903,6 +1961,7 @@ namespace Rorrim.Shared.Contracts {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public Hello(Hello other) : this() {
       displayId_ = other.displayId_;
+      requestedCodec_ = other.requestedCodec_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -1927,6 +1986,21 @@ namespace Rorrim.Shared.Contracts {
       }
     }
 
+    /// <summary>Field number for the "requested_codec" field.</summary>
+    public const int RequestedCodecFieldNumber = 2;
+    private global::Rorrim.Shared.Contracts.Codec requestedCodec_ = global::Rorrim.Shared.Contracts.Codec.Unspecified;
+    /// <summary>
+    /// preferred codec; agent falls back to JPEG if unavailable
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Rorrim.Shared.Contracts.Codec RequestedCodec {
+      get { return requestedCodec_; }
+      set {
+        requestedCodec_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -1943,6 +2017,7 @@ namespace Rorrim.Shared.Contracts {
         return true;
       }
       if (DisplayId != other.DisplayId) return false;
+      if (RequestedCodec != other.RequestedCodec) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -1951,6 +2026,7 @@ namespace Rorrim.Shared.Contracts {
     public override int GetHashCode() {
       int hash = 1;
       if (DisplayId.Length != 0) hash ^= DisplayId.GetHashCode();
+      if (RequestedCodec != global::Rorrim.Shared.Contracts.Codec.Unspecified) hash ^= RequestedCodec.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -1973,6 +2049,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(10);
         output.WriteString(DisplayId);
       }
+      if (RequestedCodec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(16);
+        output.WriteEnum((int) RequestedCodec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -1987,6 +2067,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(10);
         output.WriteString(DisplayId);
       }
+      if (RequestedCodec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(16);
+        output.WriteEnum((int) RequestedCodec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -1999,6 +2083,9 @@ namespace Rorrim.Shared.Contracts {
       int size = 0;
       if (DisplayId.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(DisplayId);
+      }
+      if (RequestedCodec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) RequestedCodec);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -2014,6 +2101,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (other.DisplayId.Length != 0) {
         DisplayId = other.DisplayId;
+      }
+      if (other.RequestedCodec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        RequestedCodec = other.RequestedCodec;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -2038,6 +2128,10 @@ namespace Rorrim.Shared.Contracts {
             DisplayId = input.ReadString();
             break;
           }
+          case 16: {
+            RequestedCodec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
+            break;
+          }
         }
       }
     #endif
@@ -2059,6 +2153,10 @@ namespace Rorrim.Shared.Contracts {
             break;
           case 10: {
             DisplayId = input.ReadString();
+            break;
+          }
+          case 16: {
+            RequestedCodec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
             break;
           }
         }
@@ -4929,6 +5027,7 @@ namespace Rorrim.Shared.Contracts {
     public AgentCommand(AgentCommand other) : this() {
       kind_ = other.kind_;
       displayId_ = other.displayId_;
+      codec_ = other.codec_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -4965,6 +5064,21 @@ namespace Rorrim.Shared.Contracts {
       }
     }
 
+    /// <summary>Field number for the "codec" field.</summary>
+    public const int CodecFieldNumber = 3;
+    private global::Rorrim.Shared.Contracts.Codec codec_ = global::Rorrim.Shared.Contracts.Codec.Unspecified;
+    /// <summary>
+    /// requested codec for SWITCH_DISPLAY
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Rorrim.Shared.Contracts.Codec Codec {
+      get { return codec_; }
+      set {
+        codec_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -4982,6 +5096,7 @@ namespace Rorrim.Shared.Contracts {
       }
       if (Kind != other.Kind) return false;
       if (DisplayId != other.DisplayId) return false;
+      if (Codec != other.Codec) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -4991,6 +5106,7 @@ namespace Rorrim.Shared.Contracts {
       int hash = 1;
       if (Kind != global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind.Unknown) hash ^= Kind.GetHashCode();
       if (DisplayId.Length != 0) hash ^= DisplayId.GetHashCode();
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) hash ^= Codec.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -5017,6 +5133,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(18);
         output.WriteString(DisplayId);
       }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(24);
+        output.WriteEnum((int) Codec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -5035,6 +5155,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(18);
         output.WriteString(DisplayId);
       }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        output.WriteRawTag(24);
+        output.WriteEnum((int) Codec);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -5050,6 +5174,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (DisplayId.Length != 0) {
         size += 1 + pb::CodedOutputStream.ComputeStringSize(DisplayId);
+      }
+      if (Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Codec);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -5068,6 +5195,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (other.DisplayId.Length != 0) {
         DisplayId = other.DisplayId;
+      }
+      if (other.Codec != global::Rorrim.Shared.Contracts.Codec.Unspecified) {
+        Codec = other.Codec;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -5096,6 +5226,10 @@ namespace Rorrim.Shared.Contracts {
             DisplayId = input.ReadString();
             break;
           }
+          case 24: {
+            Codec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
+            break;
+          }
         }
       }
     #endif
@@ -5121,6 +5255,10 @@ namespace Rorrim.Shared.Contracts {
           }
           case 18: {
             DisplayId = input.ReadString();
+            break;
+          }
+          case 24: {
+            Codec = (global::Rorrim.Shared.Contracts.Codec) input.ReadEnum();
             break;
           }
         }

@@ -4,19 +4,22 @@ using Rorrim.Agent.Capture;
 using Rorrim.Agent.Display;
 using Rorrim.Agent.Input;
 using Rorrim.Agent.Pipeline;
+using Rorrim.Shared.Contracts;
 
 // Rorrim Agent. Two modes:
 //   Rorrim.Agent --attach <brokerAddr> --session <id> [--token <t>] [--display <n>]
 //       In-session capture: connects back to the broker over gRPC, streams frames, injects input.
-//   Rorrim.Agent self-test [displayIdx]
-//       Snapshots a display to disk for validation.
+//   Rorrim.Agent self-test [h264] [displayIdx]
+//       Snapshots a display to disk for validation (h264 = use the H.264 encoder).
 
 AgentLog.Write($"agent MAIN entered: args='{string.Join(' ', args)}'");
 try
 {
     if (args.Length > 0 && args[0].Equals("self-test", StringComparison.OrdinalIgnoreCase))
     {
-        await SelfTest.RunAsync(args.Length > 1 ? args[1] : null);
+        bool useH264 = args.Length > 1 && args[1].Equals("h264", StringComparison.OrdinalIgnoreCase);
+        string? displayArg = useH264 ? (args.Length > 2 ? args[2] : null) : (args.Length > 1 ? args[1] : null);
+        await SelfTest.RunAsync(displayArg, useH264);
         return;
     }
 
@@ -40,8 +43,8 @@ try
         options.BrokerAddress!,
         options.SessionId,
         display.DeviceName,
-        d => VideoSourceFactory.Create(d),
-        () => new JpegVideoEncoder(),
+        (d, _) => VideoSourceFactory.Create(d),
+        (_, codec) => codec == Codec.H264 ? new OpenH264VideoEncoder() : new JpegVideoEncoder(),
         new InputInjector(new DisplayRect(display.X, display.Y, display.Width, display.Height)),
         options.Token);
 
@@ -79,7 +82,7 @@ record AttachOptions(string BrokerAddress, int SessionId, string? DisplayId, str
 
 static class SelfTest
 {
-    public static async Task RunAsync(string? outputIndexArg)
+    public static async Task RunAsync(string? outputIndexArg, bool useH264)
     {
         var displays = DisplayEnumerator.Enumerate();
         Console.WriteLine($"Found {displays.Count} display(s):");
@@ -102,17 +105,19 @@ static class SelfTest
         using var source = VideoSourceFactory.Create(disp);
         source.Start();
         Console.WriteLine($"Capture source: {source.Kind}");
-        using var encoder = new JpegVideoEncoder();
+        using IVideoEncoder encoder = useH264 ? new OpenH264VideoEncoder() : new JpegVideoEncoder();
+        Console.WriteLine($"Encoder: {(useH264 ? "h264 (openh264)" : "jpeg")}");
+        string ext = useH264 ? "h264" : "jpg";
 
         var controller = new StreamController(source, encoder);
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         int captured = 0;
 
         await foreach (var frame in controller.Produce().WithCancellation(cts.Token))
         {
-            string path = $"snapshot_{index}_{captured++}.jpg";
+            string path = $"snapshot_{index}_{captured++}.{ext}";
             await File.WriteAllBytesAsync(path, frame.Data);
-            Console.WriteLine($"  Frame {captured}: {frame.Width}x{frame.Height}, {frame.Data.Length} bytes -> {path}");
+            Console.WriteLine($"  Frame {captured}: {frame.Width}x{frame.Height}, {frame.Data.Length} bytes ({frame.Codec}) -> {path}");
             if (captured >= 3) break;
         }
 

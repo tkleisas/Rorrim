@@ -6,6 +6,13 @@ option csharp_namespace = "Rorrim.Shared.Contracts";
 
 // ---------- Shared types ----------
 
+// Video codec used for a frame (and requested by a client).
+enum Codec {
+  CODEC_UNSPECIFIED = 0;
+  CODEC_JPEG = 1; // per-frame JPEG (interim codec, always available)
+  CODEC_H264 = 2; // H.264 Annex-B NAL stream
+}
+
 // Metadata describing a host display (physical monitor).
 message DisplayInfo {
   string display_id = 1;   // stable id, e.g. "\\.\DISPLAY1" or device path
@@ -22,13 +29,14 @@ message DisplayListReply {
   repeated DisplayInfo displays = 1;
 }
 
-// A single encoded video frame (H.264 annex-b NAL byte stream).
+// A single encoded video frame.
 message Frame {
   bytes data = 1;
   bool is_keyframe = 2;
   uint64 timestamp_us = 3;
   uint32 width = 4;
   uint32 height = 5;
+  Codec codec = 6;
 }
 
 // ---------- Remote client <-> Broker ----------
@@ -57,6 +65,7 @@ message ServerToClient {
 
 message Hello {
   string display_id = 1;   // display to stream, or empty for primary
+  Codec requested_codec = 2; // preferred codec; agent falls back to JPEG if unavailable
 }
 
 message SetGrid {
@@ -140,6 +149,7 @@ message AgentHello {
 message AgentCommand {
   CommandKind kind = 1;
   string display_id = 2; // target display for SWITCH_DISPLAY
+  Codec codec = 3;       // requested codec for SWITCH_DISPLAY
   enum CommandKind {
     UNKNOWN = 0;
     START = 1;

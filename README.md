@@ -45,8 +45,11 @@ Known gaps / work in progress:
   yet supported (High-IL injection is blocked by privilege requirements in some contexts).
 - **Single viewer per session** — the broker serializes clients per host session: while one client
   is controlling, a second client is told to wait until the first disconnects.
-- **Codec** — frames are currently JPEG-per-frame (with change detection so a static desktop stops
-  streaming); H.264 (hardware) encoding is planned behind the same `IVideoEncoder` seam.
+- **Codec** — H.264 (OpenH264 2.4.1 via `H264Sharp`, screen-content-tuned) is the default codec:
+  the client requests H.264 in its hello, the agent encodes Annex-B streams (BGRA→I420 conversion
+  included), and every `Frame` carries its codec so older clients keep working. Static content
+  streams in ~150 bytes/frame (vs ~300 KB for the previous per-frame JPEG); JPEG remains as the
+  fallback codec, selected automatically if the H.264 encoder is unavailable.
 - **Capture path** — DXGI Desktop Duplication is preferred (GPU path, and it reports desktop-lock
   state so the client sees LOCKED during secure screens) and is validated with a blank-frame probe;
   when duplication is unavailable or delivers black output (observed on some multi-monitor setups),
@@ -60,9 +63,23 @@ Known gaps / work in progress:
 ## Requirements
 
 - Windows 10/11 (Server and Agent)
-- .NET 10 SDK
+- .NET 10 SDK for building; the released packages are self-contained (no runtime install needed)
 - The broker must run as a **Windows service as `LocalSystem`** so it can inject the agent into a
   user's session (requires the `SeTcbPrivilege` that LocalSystem holds).
+
+## Downloads
+
+GitHub Releases (per `v*` tag) contain self-contained packages:
+
+| Package | Platforms | Notes |
+|---------|-----------|-------|
+| `rorrim-server` | win-x64 | Windows service (LocalSystem), auto-start, restart-on-crash |
+| `rorrim-agent`  | win-x64 | injected into the user session by the server |
+| `rorrim-client` | win-x64, linux-x64, osx-x64, osx-arm64 | Avalonia UI; H.264 on win/linux, JPEG on macOS (no OpenH264 native shipped for osx yet) |
+| `rorrim-probe`  | win-x64 | headless gRPC smoke test |
+
+On Linux/macOS, extract the client zip and run `chmod +x Rorrim.Client` once (zip files do not
+preserve the executable bit), then `./Rorrim.Client <address>`.
 
 ## Build
 
