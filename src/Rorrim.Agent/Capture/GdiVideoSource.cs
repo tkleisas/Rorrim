@@ -21,9 +21,11 @@ public sealed class GdiVideoSource : IVideoSource
     private IntPtr _bitmap;
     private IntPtr _oldBitmap;
 
+    private byte[]? _previous;
     private bool _started;
     private bool _disposed;
 
+    public string Kind => "gdi";
     public int Width => _width;
     public int Height => _height;
     public bool IsDesktopLocked => false; // GDI captures whatever is on the virtual desktop; no lock state.
@@ -57,8 +59,10 @@ public sealed class GdiVideoSource : IVideoSource
         ThrowIfDisposed();
         if (!_started) throw new InvalidOperationException("Source is not started.");
 
-        // BitBlt the target region into the offscreen bitmap (SRCCOPY).
+        // BitBlt the target region into the offscreen bitmap (SRCCOPY). BitBlt does NOT include
+        // the mouse cursor; draw it explicitly so viewers see the pointer.
         BitBlt(_memDc, 0, 0, _width, _height, _screenDc, _x, _y, SrcCopy);
+        DrawCursorIntoCapture();
 
         var bmi = new BITMAPINFO();
         bmi.biSize = Marshal.SizeOf<BITMAPINFO>();
@@ -73,8 +77,41 @@ public sealed class GdiVideoSource : IVideoSource
         if (got == 0)
             throw new InvalidOperationException("GetDIBits failed to read the captured frame.");
 
-        long tick = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        // Change detection: return null when nothing changed so the stream idles on a static
+        // desktop instead of re-encoding identical frames.
+        if (_previous is not null && buffer.AsSpan().SequenceEqual(_previous))
+            return null;
+        _previous = buffer;
+
+        long tick = DateTimeOffset.UtcNow.UtcTicks / 10; // microseconds
         return new RawFrame(_width, _height, tick, buffer);
+    }
+
+    /// <summary>
+    /// Composites the current mouse cursor sprite into the captured bitmap. Without this the
+    /// cursor is invisible to viewers (BitBlt excludes it), and on a static desktop the cursor is
+    /// the only thing that changes between frames — so change detection would suppress all updates.
+    /// </summary>
+    private void DrawCursorIntoCapture()
+    {
+        var ci = new CURSORINFO { cbSize = Marshal.SizeOf<CURSORINFO>() };
+        if (!GetCursorInfo(ref ci) || ci.flags != CURSOR_SHOWING || ci.hCursor == IntPtr.Zero)
+            return;
+        if (!GetIconInfo(ci.hCursor, out ICONINFO info))
+            return;
+        try
+        {
+            // ptScreenPos is the cursor tip in virtual-desktop coordinates; the sprite's top-left
+            // is the tip minus the hotspot, relative to this capture region's origin.
+            int x = ci.ptScreenPos.X - info.xHotspot - _x;
+            int y = ci.ptScreenPos.Y - info.yHotspot - _y;
+            DrawIconEx(_memDc, x, y, ci.hCursor, 0, 0, 0, IntPtr.Zero, DI_NORMAL);
+        }
+        finally
+        {
+            if (info.hbmMask != IntPtr.Zero) DeleteObject(info.hbmMask);
+            if (info.hbmColor != IntPtr.Zero) DeleteObject(info.hbmColor);
+        }
     }
 
     public void Dispose()
@@ -112,6 +149,9 @@ public sealed class GdiVideoSource : IVideoSource
 
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr hWnd);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr hWnd, IntPtr hdc);
+    [DllImport("user32.dll")] private static extern bool GetCursorInfo(ref CURSORINFO pci);
+    [DllImport("user32.dll")] private static extern bool GetIconInfo(IntPtr hIcon, out ICONINFO pIconInfo);
+    [DllImport("user32.dll")] private static extern bool DrawIconEx(IntPtr hdc, int xLeft, int yTop, IntPtr hIcon, int cxWidth, int cyWidth, int istepIfAniCur, IntPtr hbrFlickerFreeDraw, int diFlags);
     [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr hdc);
     [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int w, int h);
     [DllImport("gdi32.dll")] private static extern IntPtr SelectObject(IntPtr hdc, IntPtr hobj);
@@ -119,4 +159,23 @@ public sealed class GdiVideoSource : IVideoSource
     [DllImport("gdi32.dll")] private static extern bool DeleteDC(IntPtr hdc);
     [DllImport("gdi32.dll")] private static extern bool BitBlt(IntPtr hdcDest, int x, int y, int w, int h, IntPtr hdcSrc, int xs, int ys, int rop);
     [DllImport("gdi32.dll")] private static extern int GetDIBits(IntPtr hdc, IntPtr hbm, uint start, uint cLines, byte[] lpvBits, ref BITMAPINFO lpbmi, uint usage);
+
+    private const int CURSOR_SHOWING = 0x0001;
+    private const int DI_NORMAL = 0x0003;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT { public int X; public int Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct CURSORINFO { public int cbSize; public int flags; public IntPtr hCursor; public POINT ptScreenPos; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ICONINFO
+    {
+        [MarshalAs(UnmanagedType.Bool)] public bool fIcon;
+        public int xHotspot;
+        public int yHotspot;
+        public IntPtr hbmMask;
+        public IntPtr hbmColor;
+    }
 }

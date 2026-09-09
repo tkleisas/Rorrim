@@ -3,22 +3,46 @@ using SharpGen.Runtime;
 
 namespace Rorrim.Agent.Display;
 
+/// <summary>A physical display attached to the host, as reported by DXGI.</summary>
+public readonly record struct DisplayAdapter(
+    string AdapterName,
+    int OutputIndex,
+    string DeviceName,
+    int X,
+    int Y,
+    int Width,
+    int Height)
+{
+    public string Description => $"{DeviceName} | {Width}x{Height} @({X},{Y})";
+
+    /// <summary>The monitor at the virtual-desktop origin is treated as primary.</summary>
+    public bool IsPrimary => X == 0 && Y == 0;
+}
+
 /// <summary>
 /// Enumerates the physical displays/adapters attached to the host via DXGI.
 /// Every displayed output is a candidate capture source.
 /// </summary>
 public static class DisplayEnumerator
 {
-    public readonly record struct DisplayAdapter(
-        string AdapterName,
-        int OutputIndex,
-        string DeviceName,
-        int X,
-        int Y,
-        int Width,
-        int Height)
+    /// <summary>
+    /// Resolves a display id from the wire (device name like "\\.\DISPLAY1", or a 0-based index)
+    /// to an adapter. Falls back to the first display when the id is empty or unknown.
+    /// </summary>
+    public static DisplayAdapter? Resolve(IReadOnlyList<DisplayAdapter> displays, string? id)
     {
-        public string Description => $"{DeviceName} | {Width}x{Height} @({X},{Y})";
+        if (displays.Count == 0)
+            return null;
+        if (string.IsNullOrWhiteSpace(id))
+            return displays[0];
+        if (int.TryParse(id, out int idx) && idx >= 0 && idx < displays.Count)
+            return displays[idx];
+        foreach (var d in displays)
+        {
+            if (string.Equals(d.DeviceName, id, StringComparison.OrdinalIgnoreCase))
+                return d;
+        }
+        return displays[0];
     }
 
     public static IReadOnlyList<DisplayAdapter> Enumerate()

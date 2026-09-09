@@ -37,6 +37,9 @@ public enum StreamStatusKind
 /// </summary>
 public interface IVideoSource : IDisposable
 {
+    /// <summary>Short source identifier for diagnostics ("gdi", "dxgi", ...).</summary>
+    string Kind { get; }
+
     int Width { get; }
     int Height { get; }
     bool IsDesktopLocked { get; }

@@ -16,11 +16,15 @@ public interface IAgentEndpoint
     /// <summary>Sends a command/input message down to the agent.</summary>
     ValueTask SendAsync(ServerToAgent message, CancellationToken ct);
 
+    /// <summary>Signals that the relay pair no longer needs this agent.</summary>
+    void MarkCompleted();
+
     /// <summary>
-    /// A task that completes when the relay pair no longer needs this agent and the transport
-    /// service may release the call. Set by the coordinator when the session ends.
+    /// Completes when <see cref="MarkCompleted"/> has been called (or immediately after), so the
+    /// transport service can release the call. Waiting on the returned task is safe regardless of
+    /// whether the signal has already been given.
     /// </summary>
-    Task Completed { get; set; }
+    Task WaitUntilCompletedAsync(CancellationToken ct);
 }
 
 /// <summary>

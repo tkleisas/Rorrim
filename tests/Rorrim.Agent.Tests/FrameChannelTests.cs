@@ -10,7 +10,7 @@ public class FrameChannelTests
     [Fact]
     public async Task WriteAndRead_DeliversFramesInOrder()
     {
-        using var ch = new FrameChannel(capacity: 4);
+        using var ch = new FrameChannel<EncodedFrame>(capacity: 4);
         await ch.WriteAsync(MakeFrame(1), CancellationToken.None);
         await ch.WriteAsync(MakeFrame(2), CancellationToken.None);
         ch.Complete();
@@ -27,7 +27,7 @@ public class FrameChannelTests
     [Fact]
     public async Task ReadCompletes_AfterWriterCompletes()
     {
-        using var ch = new FrameChannel(capacity: 2);
+        using var ch = new FrameChannel<EncodedFrame>(capacity: 2);
         ch.Complete();
         var count = 0;
         var cts = new CancellationTokenSource(1000);
@@ -39,7 +39,7 @@ public class FrameChannelTests
     [Fact]
     public async Task Backpressure_BlocksWriter_WhenFull()
     {
-        using var ch = new FrameChannel(capacity: 1);
+        using var ch = new FrameChannel<EncodedFrame>(capacity: 1);
         // Fill the one-slot channel.
         await ch.WriteAsync(MakeFrame(1), CancellationToken.None);
 

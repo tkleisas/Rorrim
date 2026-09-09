@@ -39,6 +39,64 @@ public class CertificateAuthorityTests
     }
 
     [Fact]
+    public void ServerCertificate_ChainsToCa_HasServerAuthAndSan()
+    {
+        using var ca = new CertificateAuthority(GetTempStore(), "testhost");
+        var server = ca.ServerCertificate;
+
+        Assert.True(server.HasPrivateKey);
+        Assert.NotEqual(ca.CaCertificate.Thumbprint, server.Thumbprint);
+
+        using var chain = new X509Chain();
+        chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+        chain.ChainPolicy.CustomTrustStore.Add(ca.CaCertificate);
+        chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        Assert.True(chain.Build(server), string.Join("; ", chain.ChainStatus.Select(s => s.StatusInformation)));
+
+        var eku = server.Extensions.OfType<X509EnhancedKeyUsageExtension>().Single();
+        Assert.Contains("1.3.6.1.5.5.7.3.1", eku.Format(false)); // serverAuth
+        Assert.Contains("CN=testhost", server.Subject);
+    }
+
+    [Fact]
+    public void IsValidClientCertificate_AcceptsOnlyCaIssuedCerts()
+    {
+        using var ca = new CertificateAuthority(GetTempStore(), "testhost");
+        var issued = ca.IssueClientCertificate("valid-client");
+        Assert.True(ca.IsValidClientCertificate(issued.Certificate));
+
+        Assert.False(ca.IsValidClientCertificate(null));
+
+        // A self-signed cert that was not issued by this CA must be rejected.
+        using var rsa = System.Security.Cryptography.RSA.Create(2048);
+        var req = new System.Security.Cryptography.X509Certificates.CertificateRequest(
+            "CN=imposter", rsa, System.Security.Cryptography.HashAlgorithmName.SHA256,
+            System.Security.Cryptography.RSASignaturePadding.Pkcs1);
+        using var imposter = req.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(1));
+        Assert.False(ca.IsValidClientCertificate(imposter));
+    }
+
+    [Fact]
+    public void CaPem_IsExported_AndMatchesCaThumbprint()
+    {
+        using var ca = new CertificateAuthority(GetTempStore(), "testhost");
+
+        Assert.True(File.Exists(ca.CaPemPath));
+        using var loaded = X509CertificateLoader.LoadCertificateFromFile(ca.CaPemPath);
+        Assert.Equal(ca.CaCertificate.Thumbprint, loaded.Thumbprint);
+    }
+
+    [Fact]
+    public void ClientPfxPath_SanitizesClientId()
+    {
+        using var ca = new CertificateAuthority(GetTempStore(), "testhost");
+        string path = ca.ClientPfxPath("client/../evil id");
+        Assert.DoesNotContain("..", path);
+        Assert.DoesNotContain("/", path);
+        Assert.EndsWith(".pfx", path);
+    }
+
+    [Fact]
     public void IssueClientCertificate_IsIdempotentForSameId()
     {
         string store = GetTempStore();

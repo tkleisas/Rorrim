@@ -8,10 +8,14 @@ namespace Rorrim.Server;
 /// </summary>
 public static class BrokerLog
 {
-    private static readonly string LogPath = "C:\\Windows\\Temp\\rorrim-diag.log";
     private static readonly object Lock = new();
+    private static string _logPath = "C:\\Windows\\Temp\\rorrim-diag.log";
 
-    public static void Configure(string? _) { }
+    public static void Configure(string? path)
+    {
+        if (!string.IsNullOrWhiteSpace(path))
+            _logPath = path;
+    }
 
     public static void Write(string message)
     {
@@ -19,7 +23,7 @@ public static class BrokerLog
         {
             lock (Lock)
             {
-                File.AppendAllText(LogPath, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
+                File.AppendAllText(_logPath, $"{DateTime.Now:HH:mm:ss.fff} {message}{Environment.NewLine}");
             }
         }
         catch { /* never throw from logging */ }

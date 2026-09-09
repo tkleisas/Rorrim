@@ -1,6 +1,7 @@
 using Grpc.Core;
 using Grpc.Net.Client;
 using Rorrim.Agent.Capture;
+using Rorrim.Agent.Display;
 using Rorrim.Agent.Pipeline;
 using Rorrim.Agent.Input;
 using Rorrim.Shared.Contracts;
@@ -8,31 +9,57 @@ using Rorrim.Shared.Contracts;
 namespace Rorrim.Agent.Broker;
 
 /// <summary>
+/// One message flowing up from the agent to the broker: an encoded frame, a heartbeat, or an
+/// (re-)announcement hello carrying the current display list. All share a single channel so the
+/// gRPC request stream has a single writer.
+/// </summary>
+public readonly record struct AgentUp(EncodedFrame? Frame, Heartbeat? Heartbeat, AgentHello? Hello);
+
+/// <summary>
 /// The Agent's loopback connection to the broker. Opens the RorrimAgent.Attach duplex stream,
-/// announces its session via an x-rorrim-session metadata header, streams captured frames up, and
-/// injects control input received from the broker.
+/// announces its session via the x-rorrim-session / x-rorrim-token metadata headers (the token is
+/// issued by the broker at launch), reports the displays it can capture, streams captured frames
+/// up, handles display-switch commands, and injects control input received from the broker.
 /// </summary>
 public sealed class AgentAttachClient : IDisposable
 {
+    /// <summary>How often a heartbeat is pushed up to the broker.</summary>
+    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(5);
+
     private readonly string _brokerAddress;
     private readonly string _displayId;
     private readonly int _sessionId;
-    private readonly Func<IVideoSource> _sourceFactory;
+    private readonly string? _token;
+    private readonly InputInjector _inputInjector;
+    private readonly Func<DisplayAdapter, IVideoSource> _sourceFactory;
     private readonly Func<IVideoEncoder> _encoderFactory;
+    private readonly StreamControllerOptions _controllerOptions;
 
     public AgentAttachClient(
         string brokerAddress,
         int sessionId,
         string displayId,
-        Func<IVideoSource>? sourceFactory = null,
-        Func<IVideoEncoder>? encoderFactory = null)
+        Func<DisplayAdapter, IVideoSource> sourceFactory,
+        Func<IVideoEncoder>? encoderFactory = null,
+        InputInjector? inputInjector = null,
+        string? token = null,
+        StreamControllerOptions? controllerOptions = null)
     {
         _brokerAddress = brokerAddress;
         _sessionId = sessionId;
         _displayId = displayId;
-        _sourceFactory = sourceFactory ?? (() => throw new NotSupportedException("No source factory provided."));
+        _sourceFactory = sourceFactory ?? throw new ArgumentNullException(nameof(sourceFactory));
         _encoderFactory = encoderFactory ?? (() => new JpegVideoEncoder());
+        _inputInjector = inputInjector ?? new InputInjector(new DisplayRect(0, 0, 1920, 1080));
+        _token = token;
+        _controllerOptions = controllerOptions ?? new StreamControllerOptions
+        {
+            TargetFrameIntervalMs = 33 // cap at ~30 fps for the JPEG path
+        };
     }
+
+    /// <summary>Delay before re-attaching after a pairing ends, so the broker can release the old registration.</summary>
+    private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(1);
 
     public async Task RunAsync(CancellationToken ct)
     {
@@ -51,7 +78,13 @@ public sealed class AgentAttachClient : IDisposable
             {
                 Console.WriteLine($"[attach] connection error: {ex.Message}");
                 await Task.Delay(2000, ct);
+                continue;
             }
+
+            // The pairing ended (client disconnected). Back off before re-attaching: registering
+            // too early would race the broker's cleanup and get the fresh registration discarded.
+            try { await Task.Delay(ReconnectDelay, ct); }
+            catch (OperationCanceledException) { break; }
         }
     }
 
@@ -60,6 +93,10 @@ public sealed class AgentAttachClient : IDisposable
         // Allow cleartext HTTP/2 over loopback for the broker (mTLS can be layered on later).
         AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
 
+        var displays = DisplayEnumerator.Enumerate();
+        var current = DisplayEnumerator.Resolve(displays, _displayId)
+            ?? throw new InvalidOperationException("No displays found to capture.");
+
         using var channel = GrpcChannel.ForAddress(_brokerAddress);
         var client = new RorrimAgent.RorrimAgentClient(channel);
 
@@ -67,92 +104,212 @@ public sealed class AgentAttachClient : IDisposable
         {
             { "x-rorrim-session", _sessionId.ToString() }
         };
+        if (!string.IsNullOrEmpty(_token))
+            headers.Add("x-rorrim-token", _token);
 
         using var call = client.Attach(headers, cancellationToken: ct);
         var request = call.RequestStream;
         var response = call.ResponseStream;
 
-        // Announce that we're attached and which display we intend to capture.
-        await request.WriteAsync(new AgentToServer
-        {
-            Hello = new AgentHello
-            {
-                DisplayId = _displayId,
-                AcquireCapture = true
-            }
-        }, ct);
-        await request.WriteAsync(new AgentToServer { Heartbeat = new Heartbeat { MonotonicUs = (ulong)Now() } }, ct);
+        // The producer announces the hello (with a fresh display list) on every capture rebuild;
+        // heartbeats flow from the heartbeat task below.
 
-        using var source = _sourceFactory();
-        source.Start();
+        // Switch requests arrive on the receive side and are consumed by the producer loop.
+        using var switchRequests = new FrameChannel<string>(capacity: 4);
 
-        // Build a bounded channel of encoded frames so the capture loop and the gRPC writer
-        // run independently (the writer may block on backpressure).
-        using var frameChannel = new FrameChannel();
+        // Bounded channel of uplink messages; backpressure instead of unbounded memory growth.
+        using var frameChannel = new FrameChannel<AgentUp>();
 
-        // Producer: capture + encode, push EncodedFrame into the channel.
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        var producer = Task.Run(async () =>
-        {
-            using var encoder = _encoderFactory();
-            var controller = new StreamController(source, encoder);
-            await foreach (var frame in controller.Produce(cts.Token))
-            {
-                await frameChannel.WriteAsync(frame, cts.Token);
-            }
-        }, ct);
 
-        // Send encoded frames up on the response stream.
-        Task sendFrames = SendFramesAsync(request, frameChannel, cts.Token);
+        // Producer: capture + encode for the current display; rebuilds on switch requests.
+        var producer = Task.Run(() => ProduceLoopAsync(current, switchRequests, frameChannel, cts.Token), cts.Token);
+
+        // Heartbeat writer: keep-alive + desktop lock state (shares the channel; channel serializes).
+        var heartbeats = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                await frameChannel.WriteAsync(
+                    new AgentUp(null, new Heartbeat { MonotonicUs = (ulong)Now(), DesktopLocked = false }, null),
+                    cts.Token);
+                await Task.Delay(HeartbeatInterval, cts.Token);
+            }
+        }, cts.Token);
+
+        // Send uplink messages on the request stream.
+        Task sendUp = SendUpAsync(request, frameChannel, cts.Token);
 
         // Read commands/input down from the broker.
-        Task receiveInput = ReceiveInputAsync(response, source, cts.Token);
+        Task receiveInput = ReceiveInputAsync(response, switchRequests, current.DeviceName, cts.Token);
 
         // Wait for any to finish (disconnect or cancel); then tear down the rest.
-        await Task.WhenAny(receiveInput, sendFrames, producer);
+        await Task.WhenAny(receiveInput, sendUp, producer, heartbeats);
         cts.Cancel();
-        try { await Task.WhenAll(receiveInput, sendFrames, producer); }
+        try { await Task.WhenAll(receiveInput, sendUp, producer, heartbeats); }
         catch when (ct.IsCancellationRequested) { }
     }
 
-    private static async Task SendFramesAsync(
-        IClientStreamWriter<AgentToServer> request,
-        FrameChannel channel,
+    /// <summary>
+    /// Capture loop for the current display. When a display-switch request arrives, the running
+    /// enumeration is interrupted via a per-iteration cancellation link and the source/encoder are
+    /// rebuilt for the new display. Exits when the token is cancelled for real (or no display).
+    /// </summary>
+    private async Task ProduceLoopAsync(
+        DisplayAdapter initial,
+        FrameChannel<string> switchRequests,
+        FrameChannel<AgentUp> outChannel,
         CancellationToken ct)
     {
-        await foreach (var frame in channel.ReadAllAsync(ct))
+        string currentId = initial.DeviceName;
+        while (!ct.IsCancellationRequested)
         {
-            await request.WriteAsync(new AgentToServer
+            var display = DisplayEnumerator.Resolve(DisplayEnumerator.Enumerate(), currentId);
+            if (display is null)
+                return;
+
+            // Cancel this iteration's enumeration when a switch request shows up.
+            using var iterationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            Task waitSwitch = switchRequests.WaitToReadAsync(iterationCts.Token);
+            _ = waitSwitch.ContinueWith(
+                t => { if (t.Status == TaskStatus.RanToCompletion) iterationCts.Cancel(); },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+
+            try
             {
-                Frame = new Frame
+                using var source = _sourceFactory(display.Value);
+                source.Start();
+                using var encoder = _encoderFactory();
+                using var controller = new StreamController(source, encoder, _controllerOptions);
+
+                // (Re-)announce the hello with a freshly enumerated display list on every rebuild,
+                // so the client always sees current monitors/resolutions.
+                await outChannel.WriteAsync(new AgentUp(null, null, new AgentHello
+                {
+                    DisplayId = display.Value.DeviceName,
+                    AcquireCapture = true,
+                    Displays = { BuildDisplayList(DisplayEnumerator.Enumerate()) }
+                }), ct);
+
+                await foreach (var frame in controller.Produce(iterationCts.Token))
+                {
+                    await outChannel.WriteAsync(new AgentUp(frame, null, null), ct);
+                }
+
+                // Enumeration ended: switch pending -> rebuild for the new display; otherwise done.
+                if (switchRequests.TryRead(out string? requested))
+                {
+                    currentId = requested;
+                    continue;
+                }
+                return;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[attach] capture error on {currentId}: {ex.Message}");
+                // Capture failed for this display; if a switch is pending, honor it, else stop.
+                if (switchRequests.TryRead(out string? requested))
+                {
+                    currentId = requested;
+                    continue;
+                }
+                return;
+            }
+        }
+    }
+
+    private static System.Collections.Generic.IEnumerable<DisplayInfo> BuildDisplayList(
+        System.Collections.Generic.IReadOnlyList<DisplayAdapter> displays)
+    {
+        foreach (var d in displays)
+        {
+            yield return new DisplayInfo
+            {
+                DisplayId = d.DeviceName,
+                Name = d.AdapterName,
+                Width = (uint)d.Width,
+                Height = (uint)d.Height,
+                X = d.X,
+                Y = d.Y,
+                IsPrimary = d.IsPrimary
+            };
+        }
+    }
+
+    private static async Task SendUpAsync(
+        IClientStreamWriter<AgentToServer> request,
+        FrameChannel<AgentUp> channel,
+        CancellationToken ct)
+    {
+        await foreach (var up in channel.ReadAllAsync(ct))
+        {
+            var msg = new AgentToServer();
+            if (up.Frame is { } frame)
+            {
+                msg.Frame = new Frame
                 {
                     Data = Google.Protobuf.ByteString.CopyFrom(frame.Data),
                     IsKeyframe = frame.IsKeyFrame,
                     TimestampUs = (ulong)frame.TimestampUs,
                     Width = (uint)frame.Width,
                     Height = (uint)frame.Height
-                }
-            }, ct);
+                };
+            }
+            else if (up.Heartbeat is { } hb)
+            {
+                msg.Heartbeat = hb;
+            }
+            else if (up.Hello is { } hello)
+            {
+                msg.Hello = hello;
+            }
+            await request.WriteAsync(msg, ct);
         }
     }
 
-    private static async Task ReceiveInputAsync(
+    private async Task ReceiveInputAsync(
         IAsyncStreamReader<ServerToAgent> response,
-        IVideoSource source,
+        FrameChannel<string> switchRequests,
+        string currentDisplayId,
         CancellationToken ct)
     {
         while (await response.MoveNext(ct))
         {
             var msg = response.Current;
-            if (msg?.Input is not null)
+            if (msg is null) continue;
+
+            if (msg.Input is { } input)
             {
-                InputInjector.Inject(msg.Input);
+                _inputInjector.Inject(input);
             }
-            // AgentCommand responses (start/stop) could toggle capture; not wired yet.
+            else             if (msg.Command is { } command)
+            {
+                if (command.Kind == AgentCommand.Types.CommandKind.SwitchDisplay
+                    && !string.IsNullOrWhiteSpace(command.DisplayId))
+                {
+                    var resolved = DisplayEnumerator.Resolve(
+                        DisplayEnumerator.Enumerate(), command.DisplayId);
+                    // Compare resolved device names: an id that resolves to the display already
+                    // being captured (e.g. the client's initial hello) is not a switch.
+                    if (resolved is { } target
+                        && !string.Equals(target.DeviceName, currentDisplayId, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _inputInjector.SetDisplay(new DisplayRect(target.X, target.Y, target.Width, target.Height));
+                        currentDisplayId = target.DeviceName;
+                        await switchRequests.WriteAsync(target.DeviceName, ct);
+                    }
+                }
+            }
         }
     }
 
-    private static long Now() => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    private static long Now() => DateTimeOffset.UtcNow.UtcTicks / 10; // microseconds
 
     public void Dispose() { }
 }

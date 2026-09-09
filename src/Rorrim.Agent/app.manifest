@@ -9,4 +9,13 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
+  <!-- Per-Monitor v2: without this the process is DPI-unaware and Windows virtualizes GDI/DXGI
+       coordinates by the monitor scale factor (e.g. 125% -> 1536x864 instead of 1920x1080),
+       producing wrongly-sized captures and display lists. -->
+  <application xmlns="urn:schemas-microsoft-com:asm.v3">
+    <windowsSettings>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">PerMonitorV2</dpiAwareness>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+    </windowsSettings>
+  </application>
 </assembly>

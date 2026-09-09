@@ -23,10 +23,20 @@ public sealed class RorrimClientService : RorrimClient.RorrimClientBase
         IServerStreamWriter<ServerToClient> responseStream,
         ServerCallContext context)
     {
-        var endpoint = new GrpcClientEndpoint(requestStream, responseStream, context);
+        // Read the client's first message (expected Hello) up-front: the coordinator needs the
+        // requested display id before it can launch the agent.
+        ClientToServer? first = null;
+        try
+        {
+            if (await requestStream.MoveNext(context.CancellationToken))
+                first = requestStream.Current;
+        }
+        catch (OperationCanceledException)
+        {
+            return; // client left before saying hello
+        }
 
-        // The client's first message is expected to be a Hello carrying the requested display.
-        // We read it (non-blocking) after the coordinator has a chance to inspect it, or read on demand.
+        var endpoint = new GrpcClientEndpoint(requestStream, responseStream, context, first);
         try
         {
             await _coordinator.HandleClientAsync(endpoint, context.CancellationToken);

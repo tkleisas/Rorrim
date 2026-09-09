@@ -14,10 +14,15 @@
     <PackageReference Include="Grpc.Core.Api" Version="2.83.0" />
     <PackageReference Include="Microsoft.Windows.Compatibility" Version="10.0.12" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.12" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Rorrim.Shared\Rorrim.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Rorrim.Server.Tests" />
   </ItemGroup>
 
 </Project>

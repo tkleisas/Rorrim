@@ -2,10 +2,11 @@
 using Rorrim.Agent.Broker;
 using Rorrim.Agent.Capture;
 using Rorrim.Agent.Display;
+using Rorrim.Agent.Input;
 using Rorrim.Agent.Pipeline;
 
 // Rorrim Agent. Two modes:
-//   Rorrim.Agent --attach <brokerAddr> --session <id> [--display <n>]
+//   Rorrim.Agent --attach <brokerAddr> --session <id> [--token <t>] [--display <n>]
 //       In-session capture: connects back to the broker over gRPC, streams frames, injects input.
 //   Rorrim.Agent self-test [displayIdx]
 //       Snapshots a display to disk for validation.
@@ -23,23 +24,26 @@ try
     if (options is null)
     {
         Console.WriteLine("Usage:");
-        Console.WriteLine("  Rorrim.Agent --attach <brokerAddr> --session <id> [--display <n>]");
+        Console.WriteLine("  Rorrim.Agent --attach <brokerAddr> --session <id> [--token <t>] [--display <n>]");
         Console.WriteLine("  Rorrim.Agent self-test [displayIdx]");
         return;
     }
 
-    var displayIndex = options.DisplayId ?? 0;
-    var displayName = ResolveDisplayName(displayIndex);
+    var displays = DisplayEnumerator.Enumerate();
+    var display = DisplayEnumerator.Resolve(displays, options.DisplayId)
+        ?? throw new InvalidOperationException("No displays found.");
 
-    AgentLog.Write($"agent starting: attach={options.BrokerAddress} session={options.SessionId} display='{displayName}'");
+    AgentLog.Write($"agent starting: attach={options.BrokerAddress} session={options.SessionId} display='{display.DeviceName}'");
     Console.WriteLine("Attaching to broker...");
 
     using var attach = new AgentAttachClient(
         options.BrokerAddress!,
         options.SessionId,
-        displayName,
-        () => CreateSource(displayIndex),
-        () => new JpegVideoEncoder());
+        display.DeviceName,
+        d => VideoSourceFactory.Create(d),
+        () => new JpegVideoEncoder(),
+        new InputInjector(new DisplayRect(display.X, display.Y, display.Width, display.Height)),
+        options.Token);
 
     await attach.RunAsync(CancellationToken.None);
 }
@@ -51,42 +55,27 @@ catch (Exception ex)
 
 // --- helpers ---
 
-static IVideoSource CreateSource(int displayIndex)
-{
-    var displays = DisplayEnumerator.Enumerate();
-    var d = displays.Count > 0
-        ? displays[Math.Min(displayIndex, displays.Count - 1)]
-        : throw new InvalidOperationException("No displays found.");
-    return new GdiVideoSource(d.X, d.Y, d.Width, d.Height);
-}
-
-static string ResolveDisplayName(int displayIndex)
-{
-    var displays = DisplayEnumerator.Enumerate();
-    return displays.Count > 0
-        ? displays[Math.Min(displayIndex, displays.Count - 1)].DeviceName
-        : "";
-}
-
 AttachOptions? ParseArgs(string[] args)
 {
     string? broker = null;
     int session = -1;
-    int? display = null;
+    string? display = null;
+    string? token = null;
     for (int i = 0; i < args.Length; i++)
     {
         switch (args[i].ToLowerInvariant())
         {
             case "--attach": if (i + 1 < args.Length) broker = args[++i]; break;
             case "--session": if (i + 1 < args.Length) int.TryParse(args[++i], out session); break;
-            case "--display": if (i + 1 < args.Length && int.TryParse(args[++i], out int dd)) display = dd; break;
+            case "--display": if (i + 1 < args.Length) display = args[++i]; break;
+            case "--token": if (i + 1 < args.Length) token = args[++i]; break;
         }
     }
     if (broker is null || session < 0) return null;
-    return new AttachOptions(broker, session, display);
+    return new AttachOptions(broker, session, display, token);
 }
 
-record AttachOptions(string BrokerAddress, int SessionId, int? DisplayId);
+record AttachOptions(string BrokerAddress, int SessionId, string? DisplayId, string? Token);
 
 static class SelfTest
 {
@@ -110,8 +99,9 @@ static class SelfTest
         var disp = displays[index];
         Console.WriteLine($"Capturing display {index}: {disp.DeviceName} {disp.Width}x{disp.Height} @({disp.X},{disp.Y})");
 
-        using var source = new GdiVideoSource(disp.X, disp.Y, disp.Width, disp.Height);
+        using var source = VideoSourceFactory.Create(disp);
         source.Start();
+        Console.WriteLine($"Capture source: {source.Kind}");
         using var encoder = new JpegVideoEncoder();
 
         var controller = new StreamController(source, encoder);

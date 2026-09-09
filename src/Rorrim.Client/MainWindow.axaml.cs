@@ -17,8 +17,13 @@ public sealed partial class MainWindow : Window
     private BrokerSessionClient? _session;
     private CancellationTokenSource? _cts;
     private WriteableBitmap? _bitmap;
-    private double _lastXNorm, _lastYNorm;
     private bool _connected;
+    private bool _suppressDisplaySelection;
+
+    // mTLS material from the command line (--pfx <path> --pfx-password <pw> --ca <pem>).
+    private readonly string? _pfxPath;
+    private readonly string? _pfxPassword;
+    private readonly string? _caPath;
 
     public MainWindow()
     {
@@ -27,14 +32,51 @@ public sealed partial class MainWindow : Window
         Viewer.PointerPressed += OnViewerPointerButton;
         Viewer.PointerReleased += OnViewerPointerButton;
         Viewer.PointerWheelChanged += OnViewerPointerWheel;
+        DisplayBox.SelectionChanged += OnDisplaySelectionChanged;
         KeyDown += OnKeyDown;
         KeyUp += OnKeyUp;
 
-        // Auto-connect if a broker address is passed as the first command-line argument.
+        // Parse the command line: one positional broker address plus optional TLS flags
+        // (--pfx <path>, --pfx-password <pw>, --ca <pem>), in "--f v" or "--f=v" form.
+        string? address = null;
         var cmdArgs = Environment.GetCommandLineArgs();
-        if (cmdArgs.Length > 1 && !string.IsNullOrWhiteSpace(cmdArgs[1]))
+        for (int i = 1; i < cmdArgs.Length; i++)
         {
-            BrokerBox.Text = cmdArgs[1];
+            string arg = cmdArgs[i];
+            string? value = null;
+            string? flag = null;
+            if (arg.StartsWith("--", StringComparison.Ordinal))
+            {
+                int eq = arg.IndexOf('=');
+                if (eq >= 0)
+                {
+                    flag = arg[..eq];
+                    value = arg[(eq + 1)..];
+                }
+                else if (i + 1 < cmdArgs.Length && !cmdArgs[i + 1].StartsWith("--"))
+                {
+                    flag = arg;
+                    value = cmdArgs[++i];
+                }
+                else
+                {
+                    flag = arg;
+                }
+            }
+
+            switch (flag)
+            {
+                case "--pfx": _pfxPath = value; break;
+                case "--pfx-password": _pfxPassword = value; break;
+                case "--ca": _caPath = value; break;
+                case null when address is null: address = arg; break;
+            }
+        }
+
+        // Auto-connect if a broker address is passed on the command line.
+        if (!string.IsNullOrWhiteSpace(address))
+        {
+            BrokerBox.Text = address;
             Dispatcher.UIThread.Post(() => OnConnectClick(null, null!));
         }
     }
@@ -54,15 +96,21 @@ public sealed partial class MainWindow : Window
         StatusText.Text = "Connecting...";
         _cts = new CancellationTokenSource();
 
-        string displayId = (DisplayBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "0";
+        string displayId = GetSelectedDisplayId();
 
         try
         {
+            var clientCert = _pfxPath is null ? null : MutualTls.LoadClientPfx(_pfxPath, _pfxPassword);
+            var trustedCa = _caPath is null ? null : MutualTls.LoadCaPem(_caPath);
+
             _session = new BrokerSessionClient(
                 broker,
                 OnFrameAsync,
                 OnStatus,
-                OnDisconnected);
+                OnDisconnected,
+                clientCertificate: clientCert,
+                trustedCa: trustedCa,
+                onDisplays: OnDisplays);
 
             _ = Task.Run(() => _session.StartAsync(displayId, _cts.Token), _cts.Token);
             _connected = true;
@@ -74,6 +122,51 @@ public sealed partial class MainWindow : Window
             StatusText.Text = "Connect failed: " + ex.Message;
             OnDisconnected(CancellationToken.None);
         }
+    }
+
+    private string GetSelectedDisplayId()
+    {
+        if (DisplayBox.SelectedItem is ComboBoxItem item && item.Tag is string tag && tag.Length > 0)
+            return tag;
+        return "0";
+    }
+
+    /// <summary>
+    /// Populates the display dropdown from the agent's display list. Tag holds the display id sent
+    /// on the wire; content is the human-readable label.
+    /// </summary>
+    private void OnDisplays(DisplayListReply displays)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            _suppressDisplaySelection = true;
+            try
+            {
+                int keepIndex = DisplayBox.SelectedIndex;
+                DisplayBox.Items.Clear();
+                for (int i = 0; i < displays.Displays.Count; i++)
+                {
+                    var d = displays.Displays[i];
+                    var label = d.IsPrimary ? $"[P] {d.DisplayId} ({d.Width}x{d.Height})"
+                                            : $"{d.DisplayId} ({d.Width}x{d.Height})";
+                    DisplayBox.Items.Add(new ComboBoxItem { Content = label, Tag = d.DisplayId });
+                }
+                if (DisplayBox.Items.Count > 0)
+                    DisplayBox.SelectedIndex = keepIndex >= 0 && keepIndex < DisplayBox.Items.Count ? keepIndex : 0;
+            }
+            finally
+            {
+                _suppressDisplaySelection = false;
+            }
+        });
+    }
+
+    private void OnDisplaySelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // Programmatic repopulation and pre-connect selection changes are not switch requests.
+        if (_suppressDisplaySelection || !_connected || _session is null) return;
+        string displayId = GetSelectedDisplayId();
+        _ = _session.SendAsync(new ClientToServer { Hello = new Hello { DisplayId = displayId } }, _cts!.Token);
     }
 
     private void OnDisconnectClick(object? sender, RoutedEventArgs e) =>
@@ -128,29 +221,61 @@ public sealed partial class MainWindow : Window
                 // Frames decode as BGRA, matching WriteableBitmap's Bgra8888.
                 byte* dst = (byte*)fb.Address.ToPointer();
                 byte[] bgra = frame.Bgra;
-                int stride = frame.Width * 4;
-                for (int i = 0; i < frame.Width * frame.Height; i++)
+                int srcStride = frame.Width * 4;
+                int dstStride = fb.RowBytes;
+                for (int y = 0; y < frame.Height; y++)
                 {
-                    int o = i * 4;
-                    dst[o] = bgra[o];
-                    dst[o + 1] = bgra[o + 1];
-                    dst[o + 2] = bgra[o + 2];
-                    dst[o + 3] = 255;
+                    byte* dstRow = dst + y * dstStride;
+                    int srcRow = y * srcStride;
+                    for (int x = 0; x < frame.Width; x++)
+                    {
+                        int o = srcRow + x * 4;
+                        int d = x * 4;
+                        dstRow[d] = bgra[o];
+                        dstRow[d + 1] = bgra[o + 1];
+                        dstRow[d + 2] = bgra[o + 2];
+                        dstRow[d + 3] = 255;
+                    }
                 }
             }
         }
+        // Re-assigning the same bitmap instance does not dirty the Image control (Avalonia skips
+        // rendering when Source is reference-identical), so force a re-render to pick up the
+        // mutated pixels.
         Viewer.Source = _bitmap;
+        Viewer.InvalidateVisual();
     }
 
     // --- input forwarding ---
 
+    /// <summary>
+    /// Maps a pointer position to normalized image coordinates, accounting for the letterboxing
+    /// that Stretch=Uniform applies when the image aspect ratio differs from the control's.
+    /// </summary>
+    private (double xn, double yn) ToNormalized(Point pos)
+    {
+        double bw = Viewer.Bounds.Width, bh = Viewer.Bounds.Height;
+        if (bw <= 0 || bh <= 0) return (0, 0);
+
+        double pw = 0, ph = 0;
+        if (Viewer.Source is IImage img)
+        {
+            var size = img.Size;
+            pw = size.Width;
+            ph = size.Height;
+        }
+        if (pw <= 0 || ph <= 0) return (Clamp01(pos.X / bw), Clamp01(pos.Y / bh));
+
+        double scale = Math.Min(bw / pw, bh / ph);
+        double offX = (bw - pw * scale) / 2.0;
+        double offY = (bh - ph * scale) / 2.0;
+        return (Clamp01((pos.X - offX) / (pw * scale)), Clamp01((pos.Y - offY) / (ph * scale)));
+    }
+
     private void OnViewerPointerMoved(object? sender, PointerEventArgs e)
     {
         if (!_connected || _session is null) return;
-        var pos = e.GetPosition(Viewer);
-        double xn = pos.X / Viewer.Bounds.Width;
-        double yn = pos.Y / Viewer.Bounds.Height;
-        _lastXNorm = xn; _lastYNorm = yn;
+        var (xn, yn) = ToNormalized(e.GetPosition(Viewer));
         _ = _session.SendAsync(new ClientToServer { Input = InputEncoder.Move(xn, yn) }, _cts!.Token);
     }
 
@@ -161,8 +286,9 @@ public sealed partial class MainWindow : Window
         var btn = MapButton(props);
         if (btn is null) return;
         bool down = e.RoutedEvent == PointerPressedEvent;
-        var input = down ? InputEncoder.ButtonDown(btn.Value, _lastXNorm, _lastYNorm)
-                         : InputEncoder.ButtonUp(btn.Value, _lastXNorm, _lastYNorm);
+        var (xn, yn) = ToNormalized(e.GetPosition(Viewer));
+        var input = down ? InputEncoder.ButtonDown(btn.Value, xn, yn)
+                         : InputEncoder.ButtonUp(btn.Value, xn, yn);
         _ = _session.SendAsync(new ClientToServer { Input = input }, _cts!.Token);
     }
 
@@ -173,15 +299,19 @@ public sealed partial class MainWindow : Window
         _ = _session.SendAsync(new ClientToServer { Input = InputEncoder.Scroll(delta) }, _cts!.Token);
     }
 
-    private void OnKeyDown(object? sender, KeyEventArgs e) => SendKey(e.Key, down: true);
-    private void OnKeyUp(object? sender, KeyEventArgs e) => SendKey(e.Key, down: false);
+    private void OnKeyDown(object? sender, KeyEventArgs e) => SendKey(e, down: true);
+    private void OnKeyUp(object? sender, KeyEventArgs e) => SendKey(e, down: false);
 
-    private void SendKey(Key key, bool down)
+    private void SendKey(KeyEventArgs e, bool down)
     {
         if (!_connected || _session is null) return;
-        var (vk, sc, ext) = MapKey(key);
+        // Don't forward keys typed into the address box (or other text fields) to the host.
+        if (FocusManager?.GetFocusedElement() is TextBox) return;
+
+        var (vk, sc, ext) = InputEncoder.MapKey(e.Key);
         if (vk == 0) return;
-        _ = _session.SendAsync(new ClientToServer { Input = InputEncoder.Key(vk, sc, down, ext) }, _cts!.Token);
+        e.Handled = true;
+        _ = _session.SendAsync(new ClientToServer { Input = InputEncoder.KeyPress(vk, sc, down, ext) }, _cts!.Token);
     }
 
     private static uint? MapButton(PointerPointProperties props)
@@ -192,22 +322,5 @@ public sealed partial class MainWindow : Window
         return null;
     }
 
-    private static (uint vk, uint scan, bool ext) MapKey(Key key)
-    {
-        return key switch
-        {
-            Key.LeftShift => (0xA0, 0, false),
-            Key.RightShift => (0xA1, 0, true),
-            Key.LeftCtrl => (0xA2, 0, false),
-            Key.RightCtrl => (0xA3, 0, true),
-            Key.LeftAlt => (0xA4, 0, false),
-            Key.RightAlt => (0xA5, 0, true),
-            Key.Enter => (0x0D, 0, false),
-            Key.Tab => (0x09, 0, false),
-            Key.Back => (0x08, 0, false),
-            Key.Space => (0x20, 0, false),
-            Key.Escape => (0x1B, 0, false),
-            _ => (0, 0, false)
-        };
-    }
+    private static double Clamp01(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
 }

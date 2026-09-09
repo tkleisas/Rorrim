@@ -33,13 +33,20 @@ public sealed class StreamController : IDisposable
             // Read the source's geometry and configure the encoder once.
             _encoder.Initialize(_source.Width, _source.Height);
 
+            var pacingStopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             while (!ct.IsCancellationRequested)
             {
-                // Detect lock / lost display and surface as a status, drain remaining.
+                // Desktop locked (secure screen): pause the stream but keep polling so it resumes
+                // automatically when the user unlocks, instead of tearing the session down.
+                // TryAcquire during the pause gives the source a chance to recover (DXGI rebuilds
+                // its duplication after unlock / device loss).
                 if (_source.IsDesktopLocked)
                 {
                     Status = StreamStatusKind.DesktopLocked;
-                    yield break;
+                    _ = _source.TryAcquire(_options.LockPollIntervalMs);
+                    if (await DelayOrCanceled(_options.LockPollIntervalMs, ct)) yield break;
+                    continue;
                 }
 
                 RawFrame? frame = _source.TryAcquire(_options.AcquireTimeoutMs);
@@ -79,6 +86,16 @@ public sealed class StreamController : IDisposable
                 _framesSinceKeyFrame++;
                 Status = StreamStatusKind.Running;
                 yield return encoded.Value;
+
+                // Target frame pacing: delay the remainder of the frame interval when the
+                // capture+encode cycle finished early (0 disables pacing).
+                if (_options.TargetFrameIntervalMs > 0)
+                {
+                    int elapsed = (int)pacingStopwatch.ElapsedMilliseconds;
+                    pacingStopwatch.Restart();
+                    int wait = _options.TargetFrameIntervalMs - elapsed;
+                    if (wait > 0 && await DelayOrCanceled(wait, ct)) yield break;
+                }
             }
         }
         finally
@@ -120,6 +137,12 @@ public sealed record StreamControllerOptions
 
     /// <summary>How long to sleep when no frame was produced/skipped.</summary>
     public int IdleDelayMs { get; init; } = 4;
+
+    /// <summary>How long to sleep between lock-state polls while the desktop is locked.</summary>
+    public int LockPollIntervalMs { get; init; } = 1000;
+
+    /// <summary>Minimum interval between frames in ms (target FPS cap). 0 disables pacing.</summary>
+    public int TargetFrameIntervalMs { get; init; } = 0;
 
     /// <summary>Force a keyframe every N frames.</summary>
     public int KeyFrameIntervalFrames { get; init; } = 120;

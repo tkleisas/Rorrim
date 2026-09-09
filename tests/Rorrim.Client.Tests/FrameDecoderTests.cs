@@ -74,9 +74,9 @@ public class InputEncoderTests
     }
 
     [Fact]
-    public void Key_MapsFlags()
+    public void KeyPress_SetsFlags()
     {
-        var msg = InputEncoder.Key(65, 30, down: true, extended: false);
+        var msg = InputEncoder.KeyPress(65, 30, down: true, extended: false);
         Assert.True(msg.Key.Down);
         Assert.False(msg.Key.Extended);
         Assert.Equal(65u, msg.Key.VirtualKey);

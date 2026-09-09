@@ -57,16 +57,18 @@ namespace Rorrim.Shared.Contracts {
             "b3JyaW0uSGVhcnRiZWF0SABCCQoHcGF5bG9hZCJqCg1TZXJ2ZXJUb0FnZW50",
             "EicKB2NvbW1hbmQYASABKAsyFC5yb3JyaW0uQWdlbnRDb21tYW5kSAASJQoF",
             "aW5wdXQYAiABKAsyFC5yb3JyaW0uUG9pbnRlcklucHV0SABCCQoHcGF5bG9h",
-            "ZCI5CgpBZ2VudEhlbGxvEhIKCmRpc3BsYXlfaWQYASABKAkSFwoPYWNxdWly",
-            "ZV9jYXB0dXJlGAIgASgIIm8KDEFnZW50Q29tbWFuZBIuCgRraW5kGAEgASgO",
-            "MiAucm9ycmltLkFnZW50Q29tbWFuZC5Db21tYW5kS2luZCIvCgtDb21tYW5k",
-            "S2luZBILCgdVTktOT1dOEAASCQoFU1RBUlQQARIICgRTVE9QEAIiOQoJSGVh",
-            "cnRiZWF0EhQKDG1vbm90b25pY191cxgBIAEoBBIWCg5kZXNrdG9wX2xvY2tl",
-            "ZBgCIAEoCDJTCgxSb3JyaW1DbGllbnQSQwoNU3RyZWFtRGVza3RvcBIWLnJv",
-            "cnJpbS5DbGllbnRUb1NlcnZlchoWLnJvcnJpbS5TZXJ2ZXJUb0NsaWVudCgB",
-            "MAEySQoLUm9ycmltQWdlbnQSOgoGQXR0YWNoEhUucm9ycmltLkFnZW50VG9T",
-            "ZXJ2ZXIaFS5yb3JyaW0uU2VydmVyVG9BZ2VudCgBMAFCGqoCF1JvcnJpbS5T",
-            "aGFyZWQuQ29udHJhY3RzYgZwcm90bzM="));
+            "ZCJgCgpBZ2VudEhlbGxvEhIKCmRpc3BsYXlfaWQYASABKAkSFwoPYWNxdWly",
+            "ZV9jYXB0dXJlGAIgASgIEiUKCGRpc3BsYXlzGAMgAygLMhMucm9ycmltLkRp",
+            "c3BsYXlJbmZvIpcBCgxBZ2VudENvbW1hbmQSLgoEa2luZBgBIAEoDjIgLnJv",
+            "cnJpbS5BZ2VudENvbW1hbmQuQ29tbWFuZEtpbmQSEgoKZGlzcGxheV9pZBgC",
+            "IAEoCSJDCgtDb21tYW5kS2luZBILCgdVTktOT1dOEAASCQoFU1RBUlQQARII",
+            "CgRTVE9QEAISEgoOU1dJVENIX0RJU1BMQVkQAyI5CglIZWFydGJlYXQSFAoM",
+            "bW9ub3RvbmljX3VzGAEgASgEEhYKDmRlc2t0b3BfbG9ja2VkGAIgASgIMlMK",
+            "DFJvcnJpbUNsaWVudBJDCg1TdHJlYW1EZXNrdG9wEhYucm9ycmltLkNsaWVu",
+            "dFRvU2VydmVyGhYucm9ycmltLlNlcnZlclRvQ2xpZW50KAEwATJJCgtSb3Jy",
+            "aW1BZ2VudBI6CgZBdHRhY2gSFS5yb3JyaW0uQWdlbnRUb1NlcnZlchoVLnJv",
+            "cnJpbS5TZXJ2ZXJUb0FnZW50KAEwAUIaqgIXUm9ycmltLlNoYXJlZC5Db250",
+            "cmFjdHNiBnByb3RvMw=="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
@@ -85,8 +87,8 @@ namespace Rorrim.Shared.Contracts {
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.KeyEvent), global::Rorrim.Shared.Contracts.KeyEvent.Parser, new[]{ "VirtualKey", "ScanCode", "Down", "Extended" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentToServer), global::Rorrim.Shared.Contracts.AgentToServer.Parser, new[]{ "Hello", "Frame", "Heartbeat" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.ServerToAgent), global::Rorrim.Shared.Contracts.ServerToAgent.Parser, new[]{ "Command", "Input" }, new[]{ "Payload" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentHello), global::Rorrim.Shared.Contracts.AgentHello.Parser, new[]{ "DisplayId", "AcquireCapture" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentCommand), global::Rorrim.Shared.Contracts.AgentCommand.Parser, new[]{ "Kind" }, null, new[]{ typeof(global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) }, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentHello), global::Rorrim.Shared.Contracts.AgentHello.Parser, new[]{ "DisplayId", "AcquireCapture", "Displays" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.AgentCommand), global::Rorrim.Shared.Contracts.AgentCommand.Parser, new[]{ "Kind", "DisplayId" }, null, new[]{ typeof(global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) }, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Rorrim.Shared.Contracts.Heartbeat), global::Rorrim.Shared.Contracts.Heartbeat.Parser, new[]{ "MonotonicUs", "DesktopLocked" }, null, null, null, null)
           }));
     }
@@ -4660,6 +4662,7 @@ namespace Rorrim.Shared.Contracts {
     public AgentHello(AgentHello other) : this() {
       displayId_ = other.displayId_;
       acquireCapture_ = other.acquireCapture_;
+      displays_ = other.displays_.Clone();
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -4696,6 +4699,20 @@ namespace Rorrim.Shared.Contracts {
       }
     }
 
+    /// <summary>Field number for the "displays" field.</summary>
+    public const int DisplaysFieldNumber = 3;
+    private static readonly pb::FieldCodec<global::Rorrim.Shared.Contracts.DisplayInfo> _repeated_displays_codec
+        = pb::FieldCodec.ForMessage(26, global::Rorrim.Shared.Contracts.DisplayInfo.Parser);
+    private readonly pbc::RepeatedField<global::Rorrim.Shared.Contracts.DisplayInfo> displays_ = new pbc::RepeatedField<global::Rorrim.Shared.Contracts.DisplayInfo>();
+    /// <summary>
+    /// displays this agent can capture
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public pbc::RepeatedField<global::Rorrim.Shared.Contracts.DisplayInfo> Displays {
+      get { return displays_; }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -4713,6 +4730,7 @@ namespace Rorrim.Shared.Contracts {
       }
       if (DisplayId != other.DisplayId) return false;
       if (AcquireCapture != other.AcquireCapture) return false;
+      if(!displays_.Equals(other.displays_)) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -4722,6 +4740,7 @@ namespace Rorrim.Shared.Contracts {
       int hash = 1;
       if (DisplayId.Length != 0) hash ^= DisplayId.GetHashCode();
       if (AcquireCapture != false) hash ^= AcquireCapture.GetHashCode();
+      hash ^= displays_.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -4748,6 +4767,7 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(16);
         output.WriteBool(AcquireCapture);
       }
+      displays_.WriteTo(output, _repeated_displays_codec);
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -4766,6 +4786,7 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(16);
         output.WriteBool(AcquireCapture);
       }
+      displays_.WriteTo(ref output, _repeated_displays_codec);
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -4782,6 +4803,7 @@ namespace Rorrim.Shared.Contracts {
       if (AcquireCapture != false) {
         size += 1 + 1;
       }
+      size += displays_.CalculateSize(_repeated_displays_codec);
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
       }
@@ -4800,6 +4822,7 @@ namespace Rorrim.Shared.Contracts {
       if (other.AcquireCapture != false) {
         AcquireCapture = other.AcquireCapture;
       }
+      displays_.Add(other.displays_);
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
 
@@ -4827,6 +4850,10 @@ namespace Rorrim.Shared.Contracts {
             AcquireCapture = input.ReadBool();
             break;
           }
+          case 26: {
+            displays_.AddEntriesFrom(input, _repeated_displays_codec);
+            break;
+          }
         }
       }
     #endif
@@ -4852,6 +4879,10 @@ namespace Rorrim.Shared.Contracts {
           }
           case 16: {
             AcquireCapture = input.ReadBool();
+            break;
+          }
+          case 26: {
+            displays_.AddEntriesFrom(ref input, _repeated_displays_codec);
             break;
           }
         }
@@ -4897,6 +4928,7 @@ namespace Rorrim.Shared.Contracts {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public AgentCommand(AgentCommand other) : this() {
       kind_ = other.kind_;
+      displayId_ = other.displayId_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -4918,6 +4950,21 @@ namespace Rorrim.Shared.Contracts {
       }
     }
 
+    /// <summary>Field number for the "display_id" field.</summary>
+    public const int DisplayIdFieldNumber = 2;
+    private string displayId_ = "";
+    /// <summary>
+    /// target display for SWITCH_DISPLAY
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public string DisplayId {
+      get { return displayId_; }
+      set {
+        displayId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -4934,6 +4981,7 @@ namespace Rorrim.Shared.Contracts {
         return true;
       }
       if (Kind != other.Kind) return false;
+      if (DisplayId != other.DisplayId) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -4942,6 +4990,7 @@ namespace Rorrim.Shared.Contracts {
     public override int GetHashCode() {
       int hash = 1;
       if (Kind != global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind.Unknown) hash ^= Kind.GetHashCode();
+      if (DisplayId.Length != 0) hash ^= DisplayId.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -4964,6 +5013,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(8);
         output.WriteEnum((int) Kind);
       }
+      if (DisplayId.Length != 0) {
+        output.WriteRawTag(18);
+        output.WriteString(DisplayId);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -4978,6 +5031,10 @@ namespace Rorrim.Shared.Contracts {
         output.WriteRawTag(8);
         output.WriteEnum((int) Kind);
       }
+      if (DisplayId.Length != 0) {
+        output.WriteRawTag(18);
+        output.WriteString(DisplayId);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -4990,6 +5047,9 @@ namespace Rorrim.Shared.Contracts {
       int size = 0;
       if (Kind != global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind.Unknown) {
         size += 1 + pb::CodedOutputStream.ComputeEnumSize((int) Kind);
+      }
+      if (DisplayId.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(DisplayId);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -5005,6 +5065,9 @@ namespace Rorrim.Shared.Contracts {
       }
       if (other.Kind != global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind.Unknown) {
         Kind = other.Kind;
+      }
+      if (other.DisplayId.Length != 0) {
+        DisplayId = other.DisplayId;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -5027,6 +5090,10 @@ namespace Rorrim.Shared.Contracts {
             break;
           case 8: {
             Kind = (global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) input.ReadEnum();
+            break;
+          }
+          case 18: {
+            DisplayId = input.ReadString();
             break;
           }
         }
@@ -5052,6 +5119,10 @@ namespace Rorrim.Shared.Contracts {
             Kind = (global::Rorrim.Shared.Contracts.AgentCommand.Types.CommandKind) input.ReadEnum();
             break;
           }
+          case 18: {
+            DisplayId = input.ReadString();
+            break;
+          }
         }
       }
     }
@@ -5066,6 +5137,7 @@ namespace Rorrim.Shared.Contracts {
         [pbr::OriginalName("UNKNOWN")] Unknown = 0,
         [pbr::OriginalName("START")] Start = 1,
         [pbr::OriginalName("STOP")] Stop = 2,
+        [pbr::OriginalName("SWITCH_DISPLAY")] SwitchDisplay = 3,
       }
 
     }

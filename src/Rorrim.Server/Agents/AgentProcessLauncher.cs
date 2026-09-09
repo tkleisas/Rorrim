@@ -52,7 +52,6 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
             }
 
             string commandLine = BuildCommandLine(_agentExecutablePath, args);
-            var si = new STARTUPINFO { cb = Marshal.SizeOf<STARTUPINFO>() };
             var pi = new PROCESS_INFORMATION();
 
             // Build the user's environment block so the launched .NET process gets correct env vars.
@@ -65,18 +64,18 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
                     cb = Marshal.SizeOf<STARTUPINFO>(),
                     lpDesktop = "winsta0\\default"
                 };
-                hr = CreateProcessAsUser(
-                    primaryToken,
-                    null!,
-                    commandLine,
-                    IntPtr.Zero,
-                    IntPtr.Zero,
-                    false,
-                    (uint)CreateProcessFlags.UnicodeEnvironment | (uint)CreateProcessFlags.NewConsole,
-                    env,
-                    Path.GetDirectoryName(_agentExecutablePath)!,
-                    ref si2,
-                    out pi);
+                    hr = CreateProcessAsUser(
+                        primaryToken,
+                        null!,
+                        commandLine,
+                        IntPtr.Zero,
+                        IntPtr.Zero,
+                        false,
+                        (uint)CreateProcessFlags.UnicodeEnvironment | (uint)CreateProcessFlags.CreateNoWindow,
+                        env,
+                        Path.GetDirectoryName(_agentExecutablePath)!,
+                        ref si2,
+                        out pi);
 
                 if (hr == 0)
                 {
@@ -90,6 +89,9 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
                 if (env != IntPtr.Zero) DestroyEnvironmentBlock(env);
             }
             BrokerLog.Write($"[launch] CreateProcessAsUser OK pid={pi.dwProcessId}");
+
+            // The primary thread handle is not needed; close it to avoid leaking handles per launch.
+            if (pi.hThread != IntPtr.Zero) CloseHandle(pi.hThread);
 
             return new LaunchedAgentProcess(pi.hProcess, pi.dwProcessId);
         }
@@ -155,7 +157,7 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
     }
 
     private static string BuildCommandLine(string exe, IReadOnlyList<string> args) =>
-        string.Join(' ', args.Prepend("\"" + exe + "\""));
+        string.Join(' ', new[] { exe }.Concat(args).Select(p => p.Contains(' ') ? $"\"{p}\"" : p));
 
     /// <summary>
     /// Enables a privilege on the current process token (e.g. SeTcbPrivilege on a LocalSystem service).
@@ -235,7 +237,7 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
     {
         None = 0,
         UnicodeEnvironment = 0x00000400, // CREATE_UNICODE_ENVIRONMENT
-        NewConsole = 0x00000010          // CREATE_NEW_CONSOLE
+        CreateNoWindow = 0x08000000      // CREATE_NO_WINDOW — the agent is invisible to the user
     }
 
     private enum TokenInfoClass
@@ -282,8 +284,15 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
 
         private static bool WaitForProcessExit(IntPtr handle)
         {
-            WaitForSingleObject(handle, uint.MaxValue);
-            return true;
+            try
+            {
+                WaitForSingleObject(handle, uint.MaxValue);
+                return true;
+            }
+            finally
+            {
+                CloseHandle(handle);
+            }
         }
 
         public void Kill()
@@ -294,6 +303,7 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
 
         [DllImport("kernel32.dll")] private static extern uint WaitForSingleObject(IntPtr hHandle, uint dwMilliseconds);
         [DllImport("kernel32.dll", SetLastError = true)] private static extern bool TerminateProcess(IntPtr hProcess, uint uExitCode);
+        [DllImport("kernel32.dll", SetLastError = true)] private static extern bool CloseHandle(IntPtr hObject);
     }
 
     // --- P/Invoke ---
@@ -358,17 +368,8 @@ public sealed class AgentProcessLauncher : IAgentProcessLauncher
     [DllImport("kernel32.dll")]
     private static extern IntPtr LocalFree(IntPtr hMem);
 
-    [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-    private static extern int CreateProcessWithTokenW(
-        SafeAccessTokenHandle hToken,
-        uint dwLogonFlags,
-        string lpApplicationName,
-        string lpCommandLine,
-        uint dwCreationFlags,
-        IntPtr lpEnvironment,
-        string lpCurrentDirectory,
-        ref STARTUPINFO lpStartupInfo,
-        out PROCESS_INFORMATION lpProcessInformation);
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(IntPtr hObject);
 
     [DllImport("advapi32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern int CreateProcessAsUser(

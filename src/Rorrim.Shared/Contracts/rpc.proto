@@ -134,14 +134,17 @@ message ServerToAgent {
 message AgentHello {
   string display_id = 1;
   bool acquire_capture = 2; // take the duplication desktop from this process
+  repeated DisplayInfo displays = 3; // displays this agent can capture
 }
 
 message AgentCommand {
   CommandKind kind = 1;
+  string display_id = 2; // target display for SWITCH_DISPLAY
   enum CommandKind {
     UNKNOWN = 0;
     START = 1;
     STOP = 2;
+    SWITCH_DISPLAY = 3;
   }
 }
 

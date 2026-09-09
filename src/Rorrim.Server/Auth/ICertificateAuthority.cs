@@ -16,6 +16,12 @@ public interface ICertificateAuthority : IDisposable
     /// <summary>The CA certificate used to sign server and client certs.</summary>
     X509Certificate2 CaCertificate { get; }
 
+    /// <summary>The TLS server certificate (leaf signed by the CA) for the gRPC listener.</summary>
+    X509Certificate2 ServerCertificate { get; }
+
+    /// <summary>Validates a peer certificate for mTLS: must chain to this CA.</summary>
+    bool IsValidClientCertificate(X509Certificate2? certificate);
+
     /// <summary>A subject name string identifying this host (used for the server certificate).</summary>
     string HostName { get; }
 

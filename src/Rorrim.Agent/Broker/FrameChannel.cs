@@ -1,31 +1,37 @@
 using System.Threading.Channels;
-using Rorrim.Agent.Pipeline;
 
 namespace Rorrim.Agent.Broker;
 
 /// <summary>
-/// A bounded, single-producer-single-consumer channel of encoded frames, decoupling the capture
-/// encode loop from the gRPC writer. When the channel is full the producer blocks, providing
-/// natural backpressure instead of unbounded memory growth.
+/// A bounded channel decoupling the capture/encode loop from the gRPC writer. When the channel is
+/// full the writer blocks, providing natural backpressure instead of unbounded memory growth.
+/// Supports multiple concurrent writers (e.g. frames and heartbeats) — writes are serialized by the
+/// channel — but expects a single reader.
 /// </summary>
-public sealed class FrameChannel : IDisposable
+public sealed class FrameChannel<T> : IDisposable
 {
-    private readonly Channel<EncodedFrame> _channel;
+    private readonly Channel<T> _channel;
 
     public FrameChannel(int capacity = 8)
     {
-        _channel = Channel.CreateBounded<EncodedFrame>(new BoundedChannelOptions(capacity)
+        _channel = Channel.CreateBounded<T>(new BoundedChannelOptions(capacity)
         {
             FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
-            SingleWriter = true
+            SingleWriter = false // frames and heartbeats share the channel
         });
     }
 
-    public ValueTask WriteAsync(EncodedFrame frame, CancellationToken ct) =>
-        _channel.Writer.WriteAsync(frame, ct);
+    public ValueTask WriteAsync(T item, CancellationToken ct) =>
+        _channel.Writer.WriteAsync(item, ct);
 
-    public IAsyncEnumerable<EncodedFrame> ReadAllAsync(CancellationToken ct) =>
+    /// <summary>Completes with true when an item is available to read; false when the channel is closed.</summary>
+    public Task<bool> WaitToReadAsync(CancellationToken ct) =>
+        _channel.Reader.WaitToReadAsync(ct).AsTask();
+
+    public bool TryRead(out T item) => _channel.Reader.TryRead(out item!);
+
+    public IAsyncEnumerable<T> ReadAllAsync(CancellationToken ct) =>
         _channel.Reader.ReadAllAsync(ct);
 
     public void Complete() => _channel.Writer.TryComplete();

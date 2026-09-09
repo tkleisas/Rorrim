@@ -3,30 +3,85 @@ using Rorrim.Shared.Contracts;
 
 namespace Rorrim.Agent.Input;
 
+/// <summary>The captured display's rectangle on the desktop, in pixels.</summary>
+public readonly record struct DisplayRect(int X, int Y, int Width, int Height);
+
+/// <summary>The bounds of the whole virtual desktop (all monitors), in pixels.</summary>
+public readonly record struct VirtualScreenBounds(int X, int Y, int Width, int Height);
+
 /// <summary>
 /// Applies <see cref="PointerInput"/> messages from the broker to the local desktop via SendInput.
-/// Works at High Integrity so it can reach elevated and non-elevated targets.
+/// Client coordinates are normalized (0..1) against the *captured display*; this injector maps them
+/// into the display's desktop rectangle and then onto the virtual desktop, which SendInput's
+/// MOUSEEVENTF_ABSOLUTE addressing spans — so input lands correctly with multi-monitor hosts.
 /// </summary>
-public static class InputInjector
+public sealed class InputInjector
 {
-    public static void Inject(PointerInput input)
-    {
-        if (input.ActionCase switch
-        {
-            PointerInput.ActionOneofCase.Move => false, // handled separately (relative/absolute move)
-            PointerInput.ActionOneofCase.Button => TryButton(input.Button),
-            PointerInput.ActionOneofCase.Key => TryKey(input.Key),
-            PointerInput.ActionOneofCase.Scroll => TryScroll(input.Scroll),
-            _ => false
-        })
-            return;
+    private const int SM_XVIRTUALSCREEN = 76;
+    private const int SM_YVIRTUALSCREEN = 77;
+    private const int SM_CXVIRTUALSCREEN = 78;
+    private const int SM_CYVIRTUALSCREEN = 79;
 
-        // Mouse move: SendInput with MOUSEEVENTF_MOVE (absolute, normalized 0..1).
-        if (input.Move is { } move)
-            SendMouseMove(move.X, move.Y);
+    private readonly VirtualScreenBounds _virtual;
+    private DisplayRect _display;
+
+    public InputInjector(DisplayRect display, VirtualScreenBounds? virtualScreen = null)
+    {
+        _display = display;
+        _virtual = virtualScreen ?? QueryVirtualScreen();
     }
 
-    private static bool TryButton(MouseButton button)
+    /// <summary>
+    /// Retargets the injector when the captured display changes. Input and switch commands are
+    /// processed on the same receive loop, so subsequent input maps to the new display.
+    /// </summary>
+    public void SetDisplay(DisplayRect display) => _display = display;
+
+    public void Inject(PointerInput input)
+    {
+        switch (input.ActionCase)
+        {
+            case PointerInput.ActionOneofCase.Move:
+                SendMouseMove(input.Move.X, input.Move.Y);
+                break;
+            case PointerInput.ActionOneofCase.Button:
+                SendButton(input.Button);
+                break;
+            case PointerInput.ActionOneofCase.Key:
+                SendKey(input.Key);
+                break;
+            case PointerInput.ActionOneofCase.Scroll:
+                SendMouseInput(MOUSEEVENTF_WHEEL, 0, 0,
+                    (uint)Math.Clamp(input.Scroll.Delta * 120.0, int.MinValue, int.MaxValue), 0);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Pure coordinate mapping: normalized (0..1) position within <paramref name="display"/> ->
+    /// absolute virtual-desktop units (0..65535) as required by MOUSEEVENTF_ABSOLUTE.
+    /// </summary>
+    public static (int x, int y) MapNormalizedToVirtual(
+        double xn, double yn, DisplayRect display, VirtualScreenBounds vs)
+    {
+        if (display.Width <= 0 || display.Height <= 0 || vs.Width <= 0 || vs.Height <= 0)
+            return (0, 0);
+
+        double absX = display.X + Clamp01(xn) * display.Width;
+        double absY = display.Y + Clamp01(yn) * display.Height;
+
+        int x = (int)Math.Round((absX - vs.X) * 65535.0 / vs.Width);
+        int y = (int)Math.Round((absY - vs.Y) * 65535.0 / vs.Height);
+        return (Math.Clamp(x, 0, 65535), Math.Clamp(y, 0, 65535));
+    }
+
+    private void SendMouseMove(double xn, double yn)
+    {
+        var (ax, ay) = MapNormalizedToVirtual(xn, yn, _display, _virtual);
+        SendMouseInput(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, ax, ay, 0, 0);
+    }
+
+    private void SendButton(MouseButton button)
     {
         uint flags = button.Button switch
         {
@@ -35,7 +90,7 @@ public static class InputInjector
             2 => MOUSEEVENTF_MIDDLEDOWN,
             _ => 0
         };
-        if (flags == 0) return false;
+        if (flags == 0) return;
         if (!button.Down)
             flags = flags switch
             {
@@ -44,30 +99,21 @@ public static class InputInjector
                 MOUSEEVENTF_MIDDLEDOWN => MOUSEEVENTF_MIDDLEUP,
                 _ => 0
             };
-        SendMouseInput(flags, button.X * 65535.0, button.Y * 65535.0, 0, 0);
-        return true;
+        var (ax, ay) = MapNormalizedToVirtual(button.X, button.Y, _display, _virtual);
+        SendMouseInput(flags, ax, ay, 0, 0);
     }
 
-    private static bool TryKey(KeyEvent key)
+    private void SendKey(KeyEvent key)
     {
         ushort vk = (ushort)key.VirtualKey;
         uint flags = (key.Extended ? KEYEVENTF_EXTENDEDKEY : 0);
         if (!key.Down) flags |= KEYEVENTF_KEYUP;
-        return SendKeyInput(vk, (ushort)key.ScanCode, flags);
+        // Scan code fallback: some applications ignore VK-only input.
+        ushort scan = key.ScanCode != 0 ? (ushort)key.ScanCode : (ushort)MapVirtualKey(vk, MAPVK_VK_TO_VSC);
+        SendKeyInput(vk, scan, flags);
     }
 
-    private static bool TryScroll(Scroll scroll)
-    {
-        SendMouseInput(MOUSEEVENTF_WHEEL, 0, 0, (uint)(scroll.Delta * 120.0), 0);
-        return true;
-    }
-
-    private static void SendMouseMove(double x, double y)
-    {
-        SendMouseInput(MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE, x * 65535.0, y * 65535.0, 0, 0);
-    }
-
-    public static void SendMouseInput(uint flags, double dx, double dy, uint wheel, uint extra)
+    private void SendMouseInput(uint flags, double dx, double dy, uint wheel, uint extra)
     {
         var p = new MOUSEINPUT
         {
@@ -82,7 +128,7 @@ public static class InputInjector
         SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
     }
 
-    public static bool SendKeyInput(ushort vk, ushort scan, uint flags)
+    private void SendKeyInput(ushort vk, ushort scan, uint flags)
     {
         var p = new KEYBDINPUT
         {
@@ -93,9 +139,16 @@ public static class InputInjector
             dwExtraInfo = UIntPtr.Zero
         };
         var input = new INPUT { type = INPUT_KEYBOARD, U = new InputUnion { ki = p } };
-        uint sent = SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
-        return sent == 1;
+        SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
     }
+
+    private static VirtualScreenBounds QueryVirtualScreen() => new(
+        GetSystemMetrics(SM_XVIRTUALSCREEN),
+        GetSystemMetrics(SM_YVIRTUALSCREEN),
+        GetSystemMetrics(SM_CXVIRTUALSCREEN),
+        GetSystemMetrics(SM_CYVIRTUALSCREEN));
+
+    private static double Clamp01(double v) => v < 0 ? 0 : v > 1 ? 1 : v;
 
     // --- P/Invoke (SendInput) ---
 
@@ -112,6 +165,7 @@ public static class InputInjector
     private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
     private const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+    private const uint MAPVK_VK_TO_VSC = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     private struct MOUSEINPUT { public int dx; public int dy; public uint mouseData; public uint dwFlags; public uint time; public UIntPtr dwExtraInfo; }
@@ -126,4 +180,10 @@ public static class InputInjector
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("user32.dll")]
+    private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 }

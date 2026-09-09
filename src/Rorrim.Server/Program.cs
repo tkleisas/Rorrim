@@ -18,8 +18,27 @@ public static class Program
 
         if (args.Length > 0 && args[0].Equals("--install-service", StringComparison.OrdinalIgnoreCase))
         {
-            ServiceInstaller.Install(string.Join(' ', args.Skip(1)));
-            Console.WriteLine("Installed service as LocalSystem. Start it with: sc start \"" + ServiceInstaller.ServiceName + "\"");
+            ServiceInstaller.Install(args.Skip(1).ToArray());
+            Console.WriteLine($"Installed and started the \"{ServiceInstaller.ServiceName}\" service (LocalSystem, auto-start, restart-on-crash).");
+            return 0;
+        }
+        if (args.Length > 0 && args[0].Equals("--issue-client", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length < 2 || args[1].StartsWith("--"))
+            {
+                Console.WriteLine("Usage: Rorrim.Server --issue-client <clientId> [--cert-store <dir>]");
+                return 1;
+            }
+            string store = CommandLineArgs.GetString(args, "--cert-store") ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Rorrim", "certs");
+            var issuerCa = new CertificateAuthority(store, Environment.MachineName);
+            var issued = issuerCa.IssueClientCertificate(args[1]);
+            Console.WriteLine($"Client certificate issued for '{issued.Subject}'.");
+            Console.WriteLine($"  PFX (private key + certificate): {issuerCa.ClientPfxPath(args[1])}");
+            Console.WriteLine($"  PFX password: {CertificateAuthority.PfxPassword}");
+            Console.WriteLine($"  CA certificate (to pin on the client): {issuerCa.CaPemPath}");
+            Console.WriteLine("Copy the PFX to the client machine, then launch:");
+            Console.WriteLine($"  Rorrim.Client https://<host>:{CommandLineArgs.GetInt(args, "--port", 50051)} --pfx <path-to-pfx> --pfx-password {CertificateAuthority.PfxPassword} --ca \"{issuerCa.CaPemPath}\"");
             return 0;
         }
         if (args.Length > 0 && args[0].Equals("--uninstall-service", StringComparison.OrdinalIgnoreCase))
@@ -29,31 +48,26 @@ public static class Program
             return 0;
         }
 
+        BrokerLog.Configure(CommandLineArgs.GetString(args, "--log"));
+        BrokerLog.Write("Server starting.");
+
         var builder = WebApplication.CreateBuilder(args);
 
-        int port = GetArg(args, "--port", 50051);
-        int agentPort = GetArg(args, "--agent-port", 50052);
-        bool testMode = args.Any(a => a.Equals("--test-mode", StringComparison.OrdinalIgnoreCase));
-        string certStore = Path.Combine(
+        int port = CommandLineArgs.GetInt(args, "--port", 50051);
+        int agentPort = CommandLineArgs.GetInt(args, "--agent-port", 50052);
+        bool testMode = CommandLineArgs.Has(args, "--test-mode");
+        string certStore = CommandLineArgs.GetString(args, "--cert-store") ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Rorrim", "certs");
-        string agentPath = Path.Combine(AppContext.BaseDirectory, "Rorrim.Agent.exe");
+        string agentPath = CommandLineArgs.GetString(args, "--agent")
+            ?? Path.Combine(AppContext.BaseDirectory, "Rorrim.Agent.exe");
         int agentAttachTimeoutMs = 15000;
-
-        foreach (var arg in args)
-        {
-            var parts = arg.Split('=', 2);
-            if (parts.Length != 2) continue;
-            if (parts[0].Equals("--cert-store", StringComparison.OrdinalIgnoreCase)) certStore = parts[1];
-            else if (parts[0].Equals("--agent", StringComparison.OrdinalIgnoreCase)) agentPath = parts[1];
-        }
-
-        BrokerLog.Write("Server starting.");
 
         var ca = new CertificateAuthority(certStore, Environment.MachineName);
 
         builder.Services.AddSingleton<ICertificateAuthority>(ca);
         builder.Services.AddSingleton<ISessionProvider, WtsSessionProvider>();
         builder.Services.AddSingleton<IAgentRegistry, AgentRegistry>();
+        builder.Services.AddSingleton<IAgentTokenStore, InMemoryAgentTokenStore>();
         builder.Services.AddSingleton<ISessionBroker, SessionBroker>();
         builder.Services.AddSingleton<IAgentProcessLauncher>(_ => new AgentProcessLauncher(agentPath));
         builder.Services.AddSingleton<ISessionCoordinator>(sp => new SessionCoordinator(
@@ -61,11 +75,17 @@ public static class Program
             sp.GetRequiredService<IAgentProcessLauncher>(),
             sp.GetRequiredService<IAgentRegistry>(),
             sp.GetRequiredService<ISessionBroker>(),
+            sp.GetRequiredService<IAgentTokenStore>(),
             $"http://localhost:{agentPort}",
             TimeSpan.FromMilliseconds(agentAttachTimeoutMs),
             BrokerLog.Write));
         builder.Services.AddSingleton<RorrimClientService>();
-        builder.Services.AddSingleton<RorrimAgentService>();
+        builder.Services.AddSingleton<RorrimAgentService>(sp =>
+            new RorrimAgentService(
+                sp.GetRequiredService<IAgentRegistry>(),
+                sp.GetRequiredService<IAgentTokenStore>(),
+                allowUnauthenticatedAgents: testMode,
+                log: BrokerLog.Write));
 
         builder.Services.AddGrpc();
 
@@ -76,15 +96,16 @@ public static class Program
                 listen.Protocols = HttpProtocols.Http2;
                 listen.UseHttps(https =>
                 {
-                    https.ServerCertificate = ca.CaCertificate;
+                    https.ServerCertificate = ca.ServerCertificate;
                     if (testMode)
                     {
                         https.ClientCertificateMode = ClientCertificateMode.NoCertificate;
                     }
                     else
                     {
+                        // Real mTLS: require a client certificate that chains to our CA.
                         https.ClientCertificateMode = ClientCertificateMode.RequireCertificate;
-                        https.ClientCertificateValidation = (_, _, _) => true;
+                        https.ClientCertificateValidation = (cert, _, _) => ca.IsValidClientCertificate(cert);
                     }
                 });
             });
@@ -94,10 +115,14 @@ public static class Program
                 listen.Protocols = HttpProtocols.Http2;
             });
 
-            options.ListenLocalhost(port + 2, listen =>
+            // Cleartext development endpoint; only exposed in test mode.
+            if (testMode)
             {
-                listen.Protocols = HttpProtocols.Http2;
-            });
+                options.ListenLocalhost(port + 2, listen =>
+                {
+                    listen.Protocols = HttpProtocols.Http2;
+                });
+            }
         });
 
         builder.Services.AddWindowsService(o => o.ServiceName = "Rorrim Server");
@@ -108,17 +133,5 @@ public static class Program
 
         await app.RunAsync();
         return 0;
-    }
-
-    private static int GetArg(IReadOnlyList<string> args, string name, int def)
-    {
-        foreach (var a in args)
-        {
-            var parts = a.Split('=', 2);
-            if (parts.Length == 2 && parts[0].Equals(name, StringComparison.OrdinalIgnoreCase)
-                && int.TryParse(parts[1], out int v))
-                return v;
-        }
-        return def;
     }
 }
